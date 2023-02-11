@@ -77,8 +77,9 @@ class MaskedAutoencoderViT(nn.Module):
                     "attention": {
                         "name": attention_name,
                         "dropout": attention_dropout,
-                        "causal": False,  # TODO: Check if needs to be True
                         "seq_len": num_patches + 1,  # This adds the mask token
+                        "causal": False,  # TODO: Check if needs to be True
+                        # "use_rotary_embeddings": True, # TODO: Check if this would be useful
                     },
                 },
                 "feedforward_config": {
@@ -120,8 +121,9 @@ class MaskedAutoencoderViT(nn.Module):
                     "attention": {
                         "name": attention_name,
                         "dropout": attention_dropout,
-                        "causal": False,
                         "seq_len": num_patches + 1,  # This adds the mask token
+                        "causal": False,
+                        # "use_rotary_embeddings": True, # TODO: Check if this would be useful
                     },
                 },
                 "feedforward_config": {
