@@ -5,23 +5,13 @@
 # DeiT: https://github.com/facebookresearch/deit
 # --------------------------------------------------------
 
-from base64 import encode
-from enum import Enum
 from functools import partial
 
 import torch
 import torch.nn as nn
-from timm.models.vision_transformer import Block, PatchEmbed
+from timm.models.vision_transformer import PatchEmbed
 from util.pos_embed import get_2d_sincos_pos_embed
-from xformers.factory import (
-    weight_init,
-    xFormer,
-    xFormerConfig,
-    xFormerDecoderBlock,
-    xFormerDecoderConfig,
-    xFormerEncoderBlock,
-    xFormerEncoderConfig,
-)
+from xformers.factory import xFormer, xFormerConfig
 
 
 class MaskedAutoencoderViT(nn.Module):
@@ -33,19 +23,25 @@ class MaskedAutoencoderViT(nn.Module):
         patch_size=16,
         in_chans=3,
         dim_model=1024,
+        # Encoder parameters
         encoder_num_layers=24,
-        num_heads=16,
+        encoder_num_heads=16,
+        # Decoder parameters
         decoder_embed_dim=512,
         decoder_num_layers=8,
         decoder_num_heads=16,
+        # Residual parameters
         residual_norm_style="post",
         residual_dropout=0.0,
+        # Feedforward parameters
         feedforward_name="FusedMLP",
         feedforward_activation="gelu",
         feedforward_hidden_layer_multiplier=4.0,
         feedforward_dropout=0.0,
+        # Attention parameters
         attention_name="scaled_dot_product",
         attention_dropout=0.0,
+        # Other parameters
         norm_pix_loss=False,
         norm_layer=nn.LayerNorm,
     ):
@@ -75,7 +71,7 @@ class MaskedAutoencoderViT(nn.Module):
                 "dim_model": dim_model,
                 "residual_norm_style": residual_norm_style,
                 "multi_head_config": {
-                    "num_heads": num_heads,
+                    "num_heads": encoder_num_heads,
                     "residual_dropout": residual_dropout,
                     "attention": {
                         "name": attention_name,
@@ -341,7 +337,7 @@ def mae_vit_base_patch16_dec512d8b(**kwargs):
     model = MaskedAutoencoderViT(
         dim_model=768,
         encoder_num_layers=12,
-        num_heads=12,
+        encoder_num_heads=12,
         decoder_embed_dim=512,
         decoder_num_layers=8,
         decoder_num_heads=16,
@@ -356,7 +352,7 @@ def mae_vit_large_patch16_dec512d8b(**kwargs):
     model = MaskedAutoencoderViT(
         dim_model=1024,
         encoder_num_layers=24,
-        num_heads=16,
+        encoder_num_heads=16,
         decoder_embed_dim=512,
         decoder_num_layers=8,
         decoder_num_heads=16,
@@ -371,7 +367,7 @@ def mae_vit_huge_patch14_dec512d8b(**kwargs):
     model = MaskedAutoencoderViT(
         dim_model=1280,
         encoder_num_layers=32,
-        num_heads=16,
+        encoder_num_heads=16,
         decoder_embed_dim=512,
         decoder_num_layers=8,
         decoder_num_heads=16,
