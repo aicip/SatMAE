@@ -29,9 +29,38 @@ All of the following tests & metrics assume the following configuration:
 
 ### Attention Types
 
-The following measurements use `reversible=True` argument in Transformer block.
+**Original SatMAE measurements**
+
+- `time: 0.1425 max mem: 5873`
+
+**Modified SatMAE w/ Xformers measurements**
+
+The following measurements use `reversible=False` argument in Transformer block
+
+- scaled_dot_product
+  - `time: 0.1481  max mem: 5901` - matches original SatMAE
+- fourier_mix
+  - TODO
+- nystrom
+  - TODO
+- scaled_dot_product
+  - TODO
+- linformer
+  - TODO
+- orthoformer
+  - TODO
+- others:
+  - random
+  - favor
+  - global
+  - local
+  - pooling
+  - blocksparse
+  - lambda
+  - compositional
+
+The following measurements use `reversible=True` argument in Transformer block.  
 This helps save memory but impacts step time negatively.
-TODO: Add measurements for `reversible=False`.
 
 - fourier_mix
   - `time: 0.1458 max mem: 3893`

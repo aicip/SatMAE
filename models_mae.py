@@ -21,7 +21,7 @@ class MaskedAutoencoderViT(nn.Module):
         self,
         img_size=224,
         patch_size=16,
-        in_channels=3,
+        in_chans=3,
         dim_model=1024,
         # Encoder parameters
         encoder_num_layers=24,
@@ -39,7 +39,7 @@ class MaskedAutoencoderViT(nn.Module):
         feedforward_hidden_layer_multiplier=4.0,
         feedforward_dropout=0.0,
         # Attention parameters
-        attention_name="scaled_dot_product",
+        attention_name="fourier_mix",
         attention_dropout=0.0,
         # Other parameters
         reversible=False,
@@ -48,13 +48,13 @@ class MaskedAutoencoderViT(nn.Module):
     ):
         super().__init__()
 
-        self.in_c = in_channels
+        self.in_c = in_chans
 
         # --------------------------------------------------------------------------
         # MAE encoder specifics
         assert img_size % patch_size == 0
 
-        self.patch_embed = PatchEmbed(img_size, patch_size, in_channels, dim_model)
+        self.patch_embed = PatchEmbed(img_size, patch_size, in_chans, dim_model)
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, dim_model))
@@ -139,7 +139,7 @@ class MaskedAutoencoderViT(nn.Module):
         # self.decoder_norm = norm_layer(decoder_embed_dim)
 
         self.decoder_pred = nn.Linear(
-            decoder_embed_dim, patch_size**2 * in_channels, bias=True
+            decoder_embed_dim, patch_size**2 * in_chans, bias=True
         )  # decoder to patch
         # --------------------------------------------------------------------------
 
