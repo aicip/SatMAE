@@ -5,14 +5,23 @@
 # DeiT: https://github.com/facebookresearch/deit
 # --------------------------------------------------------
 
+from base64 import encode
+from enum import Enum
 from functools import partial
 
 import torch
 import torch.nn as nn
-
-from timm.models.vision_transformer import PatchEmbed, Block
-
+from timm.models.vision_transformer import Block, PatchEmbed
 from util.pos_embed import get_2d_sincos_pos_embed
+from xformers.factory import (
+    weight_init,
+    xFormer,
+    xFormerConfig,
+    xFormerDecoderBlock,
+    xFormerDecoderConfig,
+    xFormerEncoderBlock,
+    xFormerEncoderConfig,
+)
 
 
 class MaskedAutoencoderViT(nn.Module):
@@ -24,14 +33,19 @@ class MaskedAutoencoderViT(nn.Module):
         patch_size=16,
         in_chans=3,
         embed_dim=1024,
-        depth=24,
-        num_heads=16,
+        encoder_depth=24,
+        encoder_num_heads=16,
         decoder_embed_dim=512,
         decoder_depth=8,
         decoder_num_heads=16,
-        mlp_ratio=4.0,
         norm_layer=nn.LayerNorm,
         norm_pix_loss=False,
+        resid_pdrop=0.0,
+        attn_pdrop=0.0,
+        mlp_pdrop=0.0,
+        attention="linformer",
+        residual_norm_style="pre",
+        mlp_ratio=4.0,
     ):
         super().__init__()
 
@@ -43,32 +57,65 @@ class MaskedAutoencoderViT(nn.Module):
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        self.pos_embed = nn.Parameter(
+        self.encoder_pos_embed = nn.Parameter(
             torch.zeros(1, num_patches + 1, embed_dim), requires_grad=False
         )  # fixed sin-cos embedding
 
         # self.blocks = nn.ModuleList([
         #     Block(embed_dim, num_heads, mlp_ratio, qkv_bias=True, qk_scale=None, norm_layer=norm_layer)
         #     for i in range(depth)])
-        self.blocks = nn.ModuleList(
-            [
-                Block(
-                    embed_dim,
-                    num_heads,
-                    mlp_ratio,
-                    qkv_bias=True,
-                    norm_layer=norm_layer,
-                )
-                for i in range(depth)
-            ]
+        # self.blocks = nn.ModuleList(
+        #     [
+        #         Block(
+        #             embed_dim,
+        #             num_heads,
+        #             mlp_ratio,
+        #             qkv_bias=True,
+        #             norm_layer=norm_layer,
+        #         )
+        #         for i in range(depth)
+        #     ]
+        # )
+
+        assert img_size % patch_size == 0
+
+        num_patches = (img_size // patch_size) ** 2
+
+        encoder_xformer_config = {
+            "dim_model": embed_dim,
+            "residual_norm_style": residual_norm_style,
+            "feedforward_config": {
+                "name": "FusedMLP",
+                "dropout": mlp_pdrop,
+                "activation": "gelu",
+                "hidden_layer_multiplier": mlp_ratio,
+            },
+            "multi_head_config": {
+                "num_heads": encoder_num_heads,
+                "residual_dropout": resid_pdrop,
+                "attention": {
+                    "name": attention,
+                    "dropout": attn_pdrop,
+                    # "causal": False,
+                    "seq_len": num_patches + 1,
+                },
+            },
+        }
+        # config = xFormerConfig(encoder_xformer_config)
+        # self.encoder = xFormer.from_config(config)
+        encoder_config = xFormerEncoderConfig(**encoder_xformer_config)
+        # self.encoder = xFormerEncoderBlock(config)
+        self.encoder_blocks = nn.ModuleList(
+            [xFormerEncoderBlock(encoder_config) for i in range(encoder_depth)]
         )
-        self.norm = norm_layer(embed_dim)
+
+        self.encoder_norm = norm_layer(embed_dim)
+
         # --------------------------------------------------------------------------
 
         # --------------------------------------------------------------------------
         # MAE decoder specifics
         self.decoder_embed = nn.Linear(embed_dim, decoder_embed_dim, bias=True)
-
         self.mask_token = nn.Parameter(torch.zeros(1, 1, decoder_embed_dim))
 
         self.decoder_pos_embed = nn.Parameter(
@@ -78,20 +125,72 @@ class MaskedAutoencoderViT(nn.Module):
         # self.decoder_blocks = nn.ModuleList([
         #     Block(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, qk_scale=None, norm_layer=norm_layer)
         #     for i in range(decoder_depth)])
+        # self.decoder_blocks = nn.ModuleList(
+        #     [
+        #         Block(
+        #             decoder_embed_dim,
+        #             decoder_num_heads,
+        #             mlp_ratio,
+        #             qkv_bias=True,
+        #             norm_layer=norm_layer,
+        #         )
+        #         for i in range(decoder_depth)
+        #     ]
+        # )
+
+        decoder_xformer_config = {
+            "dim_model": decoder_embed_dim,
+            "residual_norm_style": residual_norm_style,
+            "feedforward_config": {
+                "name": "FusedMLP",
+                "dropout": mlp_pdrop,
+                "activation": "gelu",
+                "hidden_layer_multiplier": mlp_ratio,
+            },
+            "multi_head_config": {
+                "num_heads": encoder_num_heads,
+                "residual_dropout": resid_pdrop,
+                "attention": {
+                    "name": attention,
+                    "dropout": attn_pdrop,
+                    # "causal": False,
+                    "seq_len": num_patches + 1,
+                },
+            },
+            # "multi_head_config_masked": {
+            #     "num_heads": decoder_num_heads,
+            #     "residual_dropout": resid_pdrop,
+            #     "attention": {
+            #         "name": attention,
+            #         "dropout": attn_pdrop,
+            #         # "causal": False,
+            #         "seq_len": num_patches + 1,
+            #     },
+            # },
+            # "multi_head_config_cross": {
+            #     "num_heads": decoder_num_heads,
+            #     "residual_dropout": resid_pdrop,
+            #     "attention": {
+            #         "name": attention,
+            #         "dropout": attn_pdrop,
+            #         # "causal": False,
+            #         "seq_len": num_patches + 1,
+            #     },
+            # },
+        }
+
+        # config = xFormerConfig(decoder_xformer_config)
+        # self.decoder = xFormer.from_config(config)
+
+        decoder_config = xFormerEncoderConfig(**decoder_xformer_config)
+        # self.decoder = xFormerDecoderBlock(config)
         self.decoder_blocks = nn.ModuleList(
-            [
-                Block(
-                    decoder_embed_dim,
-                    decoder_num_heads,
-                    mlp_ratio,
-                    qkv_bias=True,
-                    norm_layer=norm_layer,
-                )
-                for i in range(decoder_depth)
-            ]
+            [xFormerEncoderBlock(decoder_config) for i in range(decoder_depth)]
         )
 
+        # TODO: The norm may already be handled by XFormer
         self.decoder_norm = norm_layer(decoder_embed_dim)
+
         self.decoder_pred = nn.Linear(
             decoder_embed_dim, patch_size**2 * in_chans, bias=True
         )  # decoder to patch
@@ -99,17 +198,19 @@ class MaskedAutoencoderViT(nn.Module):
 
         self.norm_pix_loss = norm_pix_loss
 
-        self.initialize_weights()
+        # self.initialize_weights()
 
     def initialize_weights(self):
         # initialization
         # initialize (and freeze) pos_embed by sin-cos embedding
-        pos_embed = get_2d_sincos_pos_embed(
-            self.pos_embed.shape[-1],
+        encoder_pos_embed = get_2d_sincos_pos_embed(
+            self.encoder_pos_embed.shape[-1],
             int(self.patch_embed.num_patches**0.5),
             cls_token=True,
         )
-        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
+        self.encoder_pos_embed.data.copy_(
+            torch.from_numpy(encoder_pos_embed).float().unsqueeze(0)
+        )
 
         decoder_pos_embed = get_2d_sincos_pos_embed(
             self.decoder_pos_embed.shape[-1],
@@ -205,24 +306,24 @@ class MaskedAutoencoderViT(nn.Module):
         return x_masked, mask, ids_restore
 
     def forward_encoder(self, x, mask_ratio):
-        # embed patches
         x = self.patch_embed(x)
 
         # add pos embed w/o cls token
-        x = x + self.pos_embed[:, 1:, :]
+        x = x + self.encoder_pos_embed[:, 1:, :]
 
         # masking: length -> length * mask_ratio
         x, mask, ids_restore = self.random_masking(x, mask_ratio)
 
         # append cls token
-        cls_token = self.cls_token + self.pos_embed[:, :1, :]
+        cls_token = self.cls_token + self.encoder_pos_embed[:, :1, :]
         cls_tokens = cls_token.expand(x.shape[0], -1, -1)
         x = torch.cat((cls_tokens, x), dim=1)
 
         # apply Transformer blocks
-        for blk in self.blocks:
+        for blk in self.encoder_blocks:
             x = blk(x)
-        x = self.norm(x)
+        # x = self.encoder(x)
+        x = self.encoder_norm(x)
 
         return x, mask, ids_restore
 
@@ -246,6 +347,7 @@ class MaskedAutoencoderViT(nn.Module):
         # apply Transformer blocks
         for blk in self.decoder_blocks:
             x = blk(x)
+        # x = self.decoder(x)
         x = self.decoder_norm(x)
 
         # predictor projection
@@ -288,8 +390,8 @@ class MaskedAutoencoderViT(nn.Module):
 def mae_vit_base_patch16_dec512d8b(**kwargs):
     model = MaskedAutoencoderViT(
         embed_dim=768,
-        depth=12,
-        num_heads=12,
+        encoder_depth=12,
+        encoder_num_heads=12,
         decoder_embed_dim=512,
         decoder_depth=8,
         decoder_num_heads=16,
@@ -303,8 +405,8 @@ def mae_vit_base_patch16_dec512d8b(**kwargs):
 def mae_vit_large_patch16_dec512d8b(**kwargs):
     model = MaskedAutoencoderViT(
         embed_dim=1024,
-        depth=24,
-        num_heads=16,
+        encoder_depth=24,
+        encoder_num_heads=16,
         decoder_embed_dim=512,
         decoder_depth=8,
         decoder_num_heads=16,
@@ -318,8 +420,8 @@ def mae_vit_large_patch16_dec512d8b(**kwargs):
 def mae_vit_huge_patch14_dec512d8b(**kwargs):
     model = MaskedAutoencoderViT(
         embed_dim=1280,
-        depth=32,
-        num_heads=16,
+        encoder_depth=32,
+        encoder_num_heads=16,
         decoder_embed_dim=512,
         decoder_depth=8,
         decoder_num_heads=16,
