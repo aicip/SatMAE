@@ -112,7 +112,8 @@ class MaskedAutoencoderViT(nn.Module):
         decoder_xformer_config = [
             {
                 "reversible": False,
-                "block_type": "encoder",  # Use encoder here since
+                # Using encoder here since the rest of the decoder parts are handled manually (see below)
+                "block_type": "encoder",
                 "num_layers": decoder_num_layers,
                 "dim_model": decoder_embed_dim,
                 "residual_norm_style": residual_norm_style,
