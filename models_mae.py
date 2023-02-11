@@ -43,7 +43,7 @@ class MaskedAutoencoderViT(nn.Module):
         attention_dropout=0.0,
         # Other parameters
         norm_pix_loss=False,
-        norm_layer=nn.LayerNorm,
+        norm_layer=nn.LayerNorm,  # TODO: This is not used anymore (check if XFormer has it for sure)
     ):
         super().__init__()
 
