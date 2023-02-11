@@ -211,6 +211,8 @@ def main(args):
     torch.manual_seed(seed)
     np.random.seed(seed)
 
+    # TODO: Test memory, speed, and accuracy of TF32
+    # torch.backends.cuda.matmul.allow_tf32 = True
     cudnn.benchmark = True
 
     dataset_train = build_fmow_dataset(is_train=True, args=args)

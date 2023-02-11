@@ -34,7 +34,7 @@ class MaskedAutoencoderViT(nn.Module):
         residual_norm_style="post",
         residual_dropout=0.0,
         # Feedforward parameters
-        feedforward_name="FusedMLP",
+        feedforward_name="MLP",
         feedforward_activation="gelu",
         feedforward_hidden_layer_multiplier=4.0,
         feedforward_dropout=0.0,

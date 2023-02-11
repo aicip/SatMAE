@@ -27,6 +27,16 @@ All of the following tests & metrics assume the following configuration:
 - Input Size: 112
 - Batch Size: 64
 
+TODO: Test memory, speed, and accuracy of TF32
+
+```
+torch.backends.cuda.matmul.allow_tf32 = True
+```
+
+TODO: Test MLP vs FusedMLP in Xformers TransformerBlock
+
+TODO: Look into sliced attention (not sure if it's implemented in Xformers)
+
 ### Attention Types
 
 **Original SatMAE measurements**
@@ -35,12 +45,12 @@ All of the following tests & metrics assume the following configuration:
 
 **Modified SatMAE w/ Xformers measurements**
 
-The following measurements use `reversible=False` argument in Transformer block
+The following measurements use `reversible=False` and `FusedMLP` arguments in Transformer block
 
-- scaled_dot_product
-  - `time: 0.1481  max mem: 5901` - matches original SatMAE
 - fourier_mix
-  - TODO
+  - `time: 0.1071 max mem: 4352`
+- scaled_dot_product
+  - `time: 0.1481 max mem: 5901` - matches original SatMAE
 - nystrom
   - TODO
 - scaled_dot_product
@@ -59,7 +69,7 @@ The following measurements use `reversible=False` argument in Transformer block
   - lambda
   - compositional
 
-The following measurements use `reversible=True` argument in Transformer block.  
+The following measurements use `reversible=True` and `FusedMLP` arguments in Transformer block.  
 This helps save memory but impacts step time negatively.
 
 - fourier_mix
