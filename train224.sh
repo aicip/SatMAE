@@ -1,3 +1,16 @@
 #!/bin/zsh
 
-python3 main_pretrain.py --device cuda:3 --train_path /data2/HDD_16TB/fmow-rgb-preproc/train_224.csv --output_dir out224_b64_e200 --input_size 224 --batch_size 64
+INPUT_SIZE=224
+PATCH_SIZE=16
+BATCH_SIZE=64
+EPOCHS=200
+
+DEVICE="cuda:0"
+
+IN_PATH_BASE="/data2/HDD_16TB/fmow-rgb-preproc/"
+IN_PATH="$IN_PATH_BASE/train_$INPUT_SIZE.csv"
+
+OUT_DIR_BASE="./"
+OUT_DIR="$OUT_DIR_BASE/out_i${INPUT_SIZE}_p${PATCH_SIZE}_b${BATCH_SIZE}_e${EPOCHS}"
+
+python3 main_pretrain.py --device $DEVICE --train_path $TRAIN_PATH --output_dir $OUT_DIR --input_size $INPUT_SIZE --patch_size $PATCH_SIZE --batch_size $BATCH_SIZE --epochs $EPOCHS

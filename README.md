@@ -20,6 +20,14 @@ Authors:
 
 <sub><sup>1</sup> Equal contribution, order determined via coin flip.</sub>
 
+## Note
+
+Requires `timm` library version 0.4.12 due to changes in later versions.
+
+```
+pip install timm=0.4.12
+```
+
 ## Xformers Implementation Notes
 
 All of the following tests & metrics assume the following configuration:
