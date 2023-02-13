@@ -147,7 +147,7 @@ class MaskedAutoencoderViT(nn.Module):
 
         self.norm_pix_loss = norm_pix_loss
 
-        # self.initialize_weights()
+        self.initialize_weights()
 
     def initialize_weights(self):
         # initialization
