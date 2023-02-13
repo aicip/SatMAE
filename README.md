@@ -1,33 +1,37 @@
 # SatMAE (NeurIPS 2022)
-**[Project](https://sustainlab-group.github.io/SatMAE/)** | 
-**[Paper](https://arxiv.org/abs/2207.08051)** | 
+
+**[Project](https://sustainlab-group.github.io/SatMAE/)** |
+**[Paper](https://arxiv.org/abs/2207.08051)** |
 **[Video](https://recorder-v3.slideslive.com/?share=75759&s=4597a5f4-7f86-4e18-a11b-fbac51cb7616)**
 
-This is the official repository for the NeurIPS 2022 paper 
+This is the official repository for the NeurIPS 2022 paper
 "_SatMAE: Pre-training Transformers for Temporal and Multi-Spectral Satellite Imagery_".  
 
-Authors: 
+Authors:
 [Yezhen Cong](https://www.linkedin.com/in/yezhen-cong-60a449204/) <sup>1</sup>,
-[Samar Khanna](https://www.linkedin.com/in/samar-khanna-133b8190/) <sup>1</sup>, 
-[Chenlin Meng](https://chenlin9.github.io/), 
-[Patrick Liu](https://web.stanford.edu/~pliu1/), 
-[Erik Rozi](https://www.linkedin.com/in/erik-rozi/), 
+[Samar Khanna](https://www.linkedin.com/in/samar-khanna-133b8190/) <sup>1</sup>,
+[Chenlin Meng](https://chenlin9.github.io/),
+[Patrick Liu](https://web.stanford.edu/~pliu1/),
+[Erik Rozi](https://www.linkedin.com/in/erik-rozi/),
 [Yutong He](http://web.stanford.edu/~kellyyhe/),
-[Marshall Burke](https://web.stanford.edu/~mburke/), 
-[David B. Lobell](https://earth.stanford.edu/people/david-lobell#gs.5vndff), 
+[Marshall Burke](https://web.stanford.edu/~mburke/),
+[David B. Lobell](https://earth.stanford.edu/people/david-lobell#gs.5vndff),
 [Stefano Ermon](https://cs.stanford.edu/~ermon/).
 
 <sub><sup>1</sup> Equal contribution, order determined via coin flip.</sub>
 
 ## Temporal SatMAE
-Pre-training and finetuning on fMoW-Temporal are MEMORY-HEAVY. 
+
+Pre-training and finetuning on fMoW-Temporal are MEMORY-HEAVY.
 Please make sure you have enough memory.
 For context, we ran our experiments on 8 NVIDIA V100 GPUs.
 
 ### fMoW-Temporal
+
 You can download the fMoW dataset [here](https://github.com/fMoW/dataset). Then follow this piece of [code](https://github.com/fMoW/baseline/blob/master/code/data_ml_functions/dataFunctions.py#L107) to preprocess it. We will also upload the pre-processed dataset soon. The metadata files are [here](https://drive.google.com/drive/folders/1-xSXNpq0xJ4z3F7BPzEcZ04eZ7LqPbYD?usp=share_link).
 
 After you download the dataset and metadata files, your directory should look like:
+
 ```
 <PATH_TO_DATASET_ROOT_FOLDER>
 --- train_62classes.csv
@@ -42,7 +46,9 @@ After you download the dataset and metadata files, your directory should look li
 ```
 
 ### Pretraining
+
 For pretraining, this is the default command:
+
 ```shell
 python -m torch.distributed.launch --nproc_per_node=8 \
     --nnodes=1 --master_port=1234 main_pretrain.py \
@@ -59,14 +65,16 @@ python -m torch.distributed.launch --nproc_per_node=8 \
     --num_workers 8
 ```
 
-Note that if you want to use wandb, login to wandb after activating conda 
-and before running the code by doing `wandb login` in the shell, 
+Note that if you want to use wandb, login to wandb after activating conda
+and before running the code by doing `wandb login` in the shell,
 and add `--wandb <YOUR_WANDB_PROJECT_NAME>` to the command above.
 This applies to all following commands.
 You will also have to edit the entity name in `main_pretrain.py` and `main_finetune.py`.
 
 ### Finetuning
+
 To finetune, the basic command is:
+
 ```shell
 python -m torch.distributed.launch --nproc_per_node=8 \
     --nnodes=1 --master_port=1234 main_finetune.py \
@@ -82,15 +90,17 @@ python -m torch.distributed.launch --nproc_per_node=8 \
     --test_path <PATH_TO_DATASET_ROOT_FOLDER>/val_62classes.csv
 ```
 
-Note: If you are using our provided checkpoint, please add `--nb_classes 1000`. 
+Note: If you are using our provided checkpoint, please add `--nb_classes 1000`.
 This is a legacy issue which won't affect the model performance since the  actual number of classes is less than 1000.
-To resume a finetuning job, you can replace the 
+To resume a finetuning job, you can replace the
 `--finetune <PATH_TO_YOUR_PRETRAIN_CHECKPOINT>` to
 `--resume <PATH_TO_YOUR_PRETRAIN_CHECKPOINT>` in the command above.
 To finetune from scratch, simply omit the `--finetune` argument.
 
 ### Evaluation
+
 To evaluate, the basic command is:
+
 ```shell
 python -m torch.distributed.launch --nproc_per_node=8 \
     --nnodes=1 --master_port=1234 main_finetune.py \
@@ -108,14 +118,17 @@ python -m torch.distributed.launch --nproc_per_node=8 \
 Similarly, if you are using our provided checkpoint, please add `--nb_classes 1000`.
 
 ### Model Weights
+
 You can download model weights pre-trained on fMoW-temporal and weights finetuned on fMoW-temporal [here](https://doi.org/10.5281/zenodo.7369796).
 
 #### fMoW Non-Temporal Checkpoints
+
 Model                  | Top 1 Accuracy | Pretrain | Finetune |
 ---------------------- | -------------- | -------- | -------- |
 ViT-Large              | 77.78%         | [download](https://zenodo.org/record/7369797/files/fmow_pretrain.pth), 800 epochs | [download](https://zenodo.org/record/7369797/files/fmow_finetune.pth), 29 epochs    |
 
 #### fMoW Temporal Checkpoints
+
 Model                  | Top 1 Accuracy | Pretrain | Finetune |
 ---------------------- | -------------- | -------- | -------- |
 ViT-Large              | 79.99%         | [download](https://zenodo.org/record/7369797/files/pretrain_fmow_temporal.pth), 50 epochs | [download](https://zenodo.org/record/7369797/files/finetune_fmow_temporal.pth), 24 epochs    |
@@ -123,21 +136,26 @@ ViT-Large              | 79.99%         | [download](https://zenodo.org/record/7
 The accuracy of SatMAE on fMoW-Temporal (reported above) is achieved without using test-time augmentation (see paper).
 
 ## Multi-Spectral SatMAE
-Training multi-spectral SatMAE is similar to training 
+
+Training multi-spectral SatMAE is similar to training
 temporal SatMAE.
 
 ### fMoW-Sentinel Dataset
-You can access and download the fMoW-Sentinel dataset we collected [here](https://purl.stanford.edu/vg497cb6002). 
+
+You can access and download the fMoW-Sentinel dataset we collected [here](https://purl.stanford.edu/vg497cb6002).
 Try this [link](https://searchworks.stanford.edu/view/vg497cb6002) if the previous one doesn't display correctly.
 
 Note that when loading the `train.csv` or `val.csv` files, you may have to preprocess a column
 called `image_path`. The `image_path` for any row can be constructed like this:
+
 ```
 fmow-sentinel/<split>/<category>/<category>_<location_id>/<category>_<location_id>_<image_id>.tif
 ```
 
 ### Pretraining
+
 For pretraining, this is the default command:
+
 ```shell
 python -m torch.distributed.launch --nproc_per_node=8 main_pretrain.py \
 --wandb satmae_pretrain \
@@ -152,15 +170,17 @@ python -m torch.distributed.launch --nproc_per_node=8 main_pretrain.py \
 --output_dir /home/experiments/pretrain \
 --log_dir /home/experiments/pretrain
 ```
+
 You can use the `--spatial_mask` argument to toggle on consistent spatial masking
 (rather than independent masking). See paper for details (independent masking performs better).
 
-To resume a pretraining job, you can use `--resume PATH/TO/CKPT.PTH` 
+To resume a pretraining job, you can use `--resume PATH/TO/CKPT.PTH`
 (eg: `--resume /home/experiments/pretrain/checkpoint-175.pth`).
 
-
 ### Finetuning
+
 To finetune, the basic command is:
+
 ```shell
 python -m torch.distributed.launch --nproc_per_node=8 main_finetune.py \
 --wandb satmae_finetune \
@@ -176,14 +196,16 @@ python -m torch.distributed.launch --nproc_per_node=8 main_finetune.py \
 --log_dir /home/experiments/finetune \
 --finetune /home/experiments/pretain/checkpoint-199.pth
 ```
+
 To finetune from scratch, simply omit the `--finetune` argument.
-To resume a finetuning job, you can replace `--finetune path/to/pretrained_checkpoint.pth` 
+To resume a finetuning job, you can replace `--finetune path/to/pretrained_checkpoint.pth`
 with `--resume path/to/finetune_checkpoint.pth` in the command above.
 
 ### Model Weights
+
 We will be uploading model checkpoints [here](https://doi.org/10.5281/zenodo.7325338).
-The pretrained checkpoints have been trained for 200 epochs, 
-so the accuracy numbers might be higher than in the paper 
+The pretrained checkpoints have been trained for 200 epochs,
+so the accuracy numbers might be higher than in the paper
 (where the models were pretrained for 50 epochs).  
 The Top 1 accuracy is measured on the validation set of [fMoW-Sentinel](https://purl.stanford.edu/vg497cb6002).
 
@@ -193,10 +215,13 @@ ViT-Base (200 epochs)  | 62.65%         | [download](https://zenodo.org/record/7
 ViT-Large (200 epochs) | 63.84%         | [download](https://zenodo.org/record/7338613/files/pretrain-vit-large-e199.pth) | [download](https://zenodo.org/record/7338613/files/finetune-vit-large-e7.pth)    |
 
 ## Acknowledgements
+
 Code from this repository is inspired from the Masked Autoencoders (MAE) [repository](https://github.com/facebookresearch/mae).
 
 ## Citation
+
 If you found our project helpful, please cite our paper:
+
 ```
 @inproceedings{
     satmae2022,
@@ -208,4 +233,5 @@ If you found our project helpful, please cite our paper:
     url={https://openreview.net/forum?id=WBhqzpF6KYH}
 }
 ```
+
 # SatMAE
