@@ -7,30 +7,27 @@
 import argparse
 import datetime
 import json
-import numpy as np
 import os
 import time
+import traceback
 from pathlib import Path
-
-import wandb
-import torch
-import torch.backends.cudnn as cudnn
-from torch.utils.tensorboard import SummaryWriter
-
-import timm
-
-# assert timm.__version__ == "0.3.2"  # version check
-import timm.optim.optim_factory as optim_factory
-
-import util.misc as misc
-from util.datasets import build_fmow_dataset
-from util.misc import NativeScalerWithGradNormCount as NativeScaler
 
 import models_mae
 import models_mae_group_channels
 import models_mae_temporal
+import numpy as np
+import timm
 
+# assert timm.__version__ == "0.3.2"  # version check
+import timm.optim.optim_factory as optim_factory
+import torch
+import torch.backends.cudnn as cudnn
+import util.misc as misc
+import wandb
 from engine_pretrain import train_one_epoch, train_one_epoch_temporal
+from torch.utils.tensorboard import SummaryWriter
+from util.datasets import build_fmow_dataset
+from util.misc import NativeScalerWithGradNormCount as NativeScaler
 
 
 def get_args_parser():
@@ -163,17 +160,14 @@ def get_args_parser():
         "--log_dir", default="./output_dir", help="path where to tensorboard log"
     )
     parser.add_argument(
-        "--device",
-        default="cuda",
-        help="device to use for training / testing"
+        "--device", default="cuda", help="device to use for training / testing"
     )
     parser.add_argument("--seed", default=0, type=int)
     parser.add_argument("--resume", default="", help="resume from checkpoint")
     parser.add_argument(
         "--wandb",
         type=str,
-        # default=None,
-        default="satmae",
+        default=None,
         help="Wandb project name, eg: sentinel_pretrain",
     )
 
@@ -367,9 +361,13 @@ def main(args):
                 f.write(json.dumps(log_stats) + "\n")
 
             try:
-                wandb.log(log_stats)
-            except ValueError:
-                print(f"Invalid stats?")
+                if args.wandb is not None:
+                    wandb.log(log_stats)
+            except ValueError as e:
+                # print traceback
+                traceback.print_exc()
+                # print the error
+                print(f"Failed to log to wandb: {e}")
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
