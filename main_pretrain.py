@@ -364,9 +364,7 @@ def main(args):
                 if args.wandb is not None:
                     wandb.log(log_stats)
             except ValueError as e:
-                # print traceback
                 traceback.print_exc()
-                # print the error
                 print(f"Failed to log to wandb: {e}")
 
     total_time = time.time() - start_time
