@@ -5,7 +5,7 @@ PATCH_SIZE=16
 BATCH_SIZE=64
 EPOCHS=200
 
-DEVICE="cuda:0"
+DEVICE="cuda:3"
 
 # IN_PATH_BASE="$HOME/Documents/datasets/image/fmow-rgb"
 IN_PATH_BASE="/data2/HDD_16TB/fmow-rgb-preproc"
