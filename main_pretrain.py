@@ -268,6 +268,7 @@ def main(args):
             patch_size=args.patch_size,
             in_chans=dataset_train.in_c,
             norm_pix_loss=args.norm_pix_loss,
+            attention=args.attention
         )
     model.to(device)
 

@@ -5,7 +5,7 @@ PATCH_SIZE=16
 BATCH_SIZE=64
 EPOCHS=200
 
-DEVICE="cuda:0"
+DEVICE="cuda:3"
 
 ATTENTION="scaled_dot_product"
 
