@@ -34,12 +34,12 @@ class MaskedAutoencoderViT(nn.Module):
         residual_norm_style="post",
         residual_dropout=0.0,
         # Feedforward parameters
-        feedforward_name="MLP",
+        feedforward="MLP",
         feedforward_activation="gelu",
         feedforward_hidden_layer_multiplier=4.0,
         feedforward_dropout=0.0,
         # Attention parameters
-        attention_name="fourier_mix",
+        attention=None, # Passed from pretrain script
         attention_dropout=0.0,
         # Other parameters
         reversible=False,
@@ -75,7 +75,7 @@ class MaskedAutoencoderViT(nn.Module):
                     "num_heads": encoder_num_heads,
                     "residual_dropout": residual_dropout,
                     "attention": {
-                        "name": attention_name,
+                        "name": attention,
                         "dropout": attention_dropout,
                         "seq_len": num_patches + 1,  # This adds the mask token
                         "causal": False,  # TODO: Check if needs to be True
@@ -83,7 +83,7 @@ class MaskedAutoencoderViT(nn.Module):
                     },
                 },
                 "feedforward_config": {
-                    "name": feedforward_name,
+                    "name": feedforward,
                     "dropout": feedforward_dropout,
                     "activation": feedforward_activation,
                     "hidden_layer_multiplier": feedforward_hidden_layer_multiplier,
@@ -119,7 +119,7 @@ class MaskedAutoencoderViT(nn.Module):
                     "num_heads": decoder_num_heads,
                     "residual_dropout": residual_dropout,
                     "attention": {
-                        "name": attention_name,
+                        "name": attention,
                         "dropout": attention_dropout,
                         "seq_len": num_patches + 1,  # This adds the mask token
                         "causal": False,
@@ -127,7 +127,7 @@ class MaskedAutoencoderViT(nn.Module):
                     },
                 },
                 "feedforward_config": {
-                    "name": feedforward_name,
+                    "name": feedforward,
                     "dropout": feedforward_dropout,
                     "activation": feedforward_activation,
                     "hidden_layer_multiplier": feedforward_hidden_layer_multiplier,

@@ -25,7 +25,7 @@ Authors:
 Requires `timm` library version 0.4.12 due to changes in later versions.
 
 ```
-pip install timm=0.4.12
+pip install timm==0.4.12
 ```
 
 ## Xformers Implementation Notes

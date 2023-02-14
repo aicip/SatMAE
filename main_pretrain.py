@@ -62,7 +62,7 @@ def get_args_parser():
 
     parser.add_argument("--input_size", default=224, type=int, help="images input size")
     parser.add_argument("--patch_size", default=16, type=int, help="images input size")
-
+    parser.add_argument("--attention", default="scaled_dot_product", type=str, help="attention name to use in transformer block")
     parser.add_argument(
         "--mask_ratio",
         default=0.75,
