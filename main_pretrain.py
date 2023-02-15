@@ -9,6 +9,7 @@ import datetime
 import json
 import os
 import time
+import traceback
 from pathlib import Path
 
 import models_mae
@@ -167,7 +168,6 @@ def get_args_parser():
         "--wandb",
         type=str,
         default=None,
-        # default="satmae",
         help="Wandb project name, eg: sentinel_pretrain",
     )
 
@@ -364,9 +364,11 @@ def main(args):
                 f.write(json.dumps(log_stats) + "\n")
 
             try:
-                wandb.log(log_stats)
-            except ValueError:
-                print(f"Invalid stats?")
+                if args.wandb is not None:
+                    wandb.log(log_stats)
+            except ValueError as e:
+                traceback.print_exc()
+                print(f"Failed to log to wandb: {e}")
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
