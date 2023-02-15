@@ -167,3 +167,4 @@ output_dir/
 wandb
 
 *.csv
+data
