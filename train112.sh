@@ -17,10 +17,6 @@ IN_PATH="$IN_PATH_BASE/train_$INPUT_SIZE.csv"
 OUT_DIR_BASE="/data2/HDD_16TB/ICCV/Model_Saving"
 OUT_DIR="${OUT_DIR_BASE}/out_i${INPUT_SIZE}_p${PATCH_SIZE}_b${BATCH_SIZE}_e${EPOCHS}_${ATTENTION}"
 
-<<<<<<< HEAD
-python3 main_pretrain.py --device "$DEVICE" --train_path "$IN_PATH" --output_dir "$OUT_DIR" --input_size "$INPUT_SIZE" --patch_size "$PATCH_SIZE" --batch_size "$BATCH_SIZE" --epochs "$EPOCHS" --attention "$ATTENTION"
-=======
 WANDB_PROJ="satmae"
 
-python3 main_pretrain.py --device "$DEVICE" --train_path "$IN_PATH" --output_dir "$OUT_DIR" --input_size "$INPUT_SIZE" --patch_size "$PATCH_SIZE" --batch_size "$BATCH_SIZE" --epochs "$EPOCHS" --wandb "$WANDB_PROJ"
->>>>>>> 494142cbc79a21b6104d1804208a41a0d97e20df
+python3 main_pretrain.py --device "$DEVICE" --train_path "$IN_PATH" --output_dir "$OUT_DIR" --input_size "$INPUT_SIZE" --patch_size "$PATCH_SIZE" --batch_size "$BATCH_SIZE" --epochs "$EPOCHS" --attention "$ATTENTION"  --wandb "$WANDB_PROJ"
