@@ -168,10 +168,6 @@ def get_args_parser():
         "--wandb",
         type=str,
         default=None,
-<<<<<<< HEAD
-        # default="satmae",
-=======
->>>>>>> 494142cbc79a21b6104d1804208a41a0d97e20df
         help="Wandb project name, eg: sentinel_pretrain",
     )
 
