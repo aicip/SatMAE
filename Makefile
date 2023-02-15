@@ -64,8 +64,8 @@ create_env:
 	@echo "Creating virtual environment.."
 	eval $(CREATE_COMMAND)
 requirements:
-	# awk '{print gensub(/ @.*/,"",1,$$0)}' requirements.txt > requirements_clean.txt
-	$(BIN)/pip install -r requirements_clean.txt
+	# awk '{print gensub(/ @.*/,"",1,$$0)}' requirements.txt > requirements.txt
+	$(BIN)/pip install -r requirements.txt
 	# conda env update --file env.yml --prune -n $(ENV_NAME)
 
 .PHONY: help install delete_env create_env requirements
