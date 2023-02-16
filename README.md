@@ -57,17 +57,26 @@ Size Difference Ratio: `128 / 112 = 1.14285714286`
 The following measurements use `reversible=False` and `MLP` arguments in Transformer block (to match original SatMAE config)
 
 - fourier_mix
-  - 112x112 - `time: 0.1071 max mem: 4352` - mem/step ratio `0.766 * 1.14285714286 = 0.875`
-  - 128x128 - `time: 0.1072 max mem: 4651` - mem/step ratio `0.819`
+  - 112x112 - `time: 0.1071 max mem: 4352`
+    - mem/step ratio: `0.766`
+    - scaled to 128: `0.766 * 1.14285714286 = 0.875`
+  - 128x128 - `time: 0.1072 max mem: 4651`
+    - mem/step ratio: `0.819`
   - % difference: `(0.875 - 0.819) / 0.819 = 0.068`
 - scaled_dot_product
-  - 112x112 - `time: 0.1416 max mem: 5888` - mem/step ratio `1.037 * 1.14285714286 = 1.185`
+  - 112x112 - `time: 0.1416 max mem: 5888`
+    - mem/step ratio: `1.037`
+    - scaled to 128: `1.037 * 1.14285714286 = 1.185`
     - matches original SatMAE
-  - 128x128 - `time: 0.1519 max mem: 6346` - mem/step ratio `1.117`
+  - 128x128 - `time: 0.1519 max mem: 6346`
+    - mem/step ratio: `1.117`
   - % difference: `(1.185 - 1.117) / 1.117 = 0.061`
 - linformer
-  - 112x112 - `time: 0.1765 max mem: 6326` - mem/step ratio `1.114 * 1.14285714286 = 1.273`
-  - 128x128 - `time: 0.1689 max mem: 6864` - mem/step ratio `1.208`
+  - 112x112 - `time: 0.1765 max mem: 6326`
+    - mem/step ratio: `1.114`
+    - scaled to 128: `1.114 * 1.14285714286 = 1.273`
+  - 128x128 - `time: 0.1689 max mem: 6864`
+    - mem/step ratio `1.208`
   - % difference: `(1.273 - 1.208) / 1.208 = 0.054`
 - nystrom
   - TODO
