@@ -20,4 +20,4 @@ OUT_DIR="${OUT_DIR_BASE}/out_i${INPUT_SIZE}_p${PATCH_SIZE}_b${BATCH_SIZE}_e${EPO
 
 WANDB="satmae"
 
-python3 main_pretrain.py --device "$DEVICE" --train_path "$IN_PATH" --output_dir "$OUT_DIR" --input_size "$INPUT_SIZE" --patch_size "$PATCH_SIZE" --batch_size "$BATCH_SIZE" --epochs "$EPOCHS" --attention "$ATTENTION" --wandb "$WANDB"
+python3 main_pretrain.py --device "$DEVICE" --train_path "$IN_PATH" --output_dir "$OUT_DIR" --input_size "$INPUT_SIZE" --patch_size "$PATCH_SIZE" --batch_size "$BATCH_SIZE" --epochs "$EPOCHS" --attention "$ATTENTION" --wandb "$WANDB" $@
