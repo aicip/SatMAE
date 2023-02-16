@@ -32,8 +32,7 @@ pip install timm==0.4.12
 
 All of the following tests & metrics assume the following configuration:
 
-- Input Size: 112
-- Batch Size: 64
+- Batch Size: 64 (5680 steps per epoch)
 
 TODO: Test memory, speed, and accuracy of TF32
 
@@ -53,17 +52,24 @@ TODO: Look into sliced attention (not sure if it's implemented in Xformers)
 
 **Modified SatMAE w/ Xformers measurements**
 
-The following measurements use `reversible=False` and `FusedMLP` arguments in Transformer block
+Size Difference Ratio: `128 / 112 = 1.14285714286`
+
+The following measurements use `reversible=False` and `MLP` arguments in Transformer block (to match original SatMAE config)
 
 - fourier_mix
-  - `time: 0.1071 max mem: 4352`
+  - 112x112 - `time: 0.1071 max mem: 4352` - mem/step ratio `0.766 * 1.14285714286 = 0.875`
+  - 128x128 - `time: 0.1072 max mem: 4651` - mem/step ratio `0.819`
+  - % difference: `(0.875 - 0.819) / 0.819 = 0.068`
 - scaled_dot_product
-  - `time: 0.1481 max mem: 5901` - matches original SatMAE
-- nystrom
-  - TODO
-- scaled_dot_product
-  - TODO
+  - 112x112 - `time: 0.1416 max mem: 5888` - mem/step ratio `1.037 * 1.14285714286 = 1.185`
+    - matches original SatMAE
+  - 128x128 - `time: 0.1519 max mem: 6346` - mem/step ratio `1.117`
+  - % difference: `(1.185 - 1.117) / 1.117 = 0.061`
 - linformer
+  - 112x112 - `time: 0.1765 max mem: 6326` - mem/step ratio `1.114 * 1.14285714286 = 1.273`
+  - 128x128 - `time: 0.1689 max mem: 6864` - mem/step ratio `1.208`
+  - % difference: `(1.273 - 1.208) / 1.208 = 0.054`
+- nystrom
   - TODO
 - orthoformer
   - TODO
@@ -77,7 +83,7 @@ The following measurements use `reversible=False` and `FusedMLP` arguments in Tr
   - lambda
   - compositional
 
-The following measurements use `reversible=True` and `FusedMLP` arguments in Transformer block.  
+The following measurements use `reversible=True` and `MLP` arguments in Transformer block.  
 This helps save memory but impacts step time negatively.
 
 - fourier_mix
