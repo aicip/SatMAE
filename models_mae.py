@@ -11,33 +11,82 @@ import torch
 import torch.nn as nn
 # from timm.models.vision_transformer import PatchEmbed
 from util.pos_embed import get_2d_sincos_pos_embed
-from shunted import Block, Head, OverlapPatchEmbed as PatchEmbed
+from shunted import Block, Head, OverlapPatchEmbed
 
-class MaskedAutoencoderViT(nn.Module):
+class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencoderViT
     """Masked Autoencoder with VisionTransformer backbone"""
 
-    def __init__(
-        self,
-        img_size=224,
-        patch_size=16,
-        in_chans=3,
-        embed_dim=1024,
-        depth=24,
-        num_heads=16,
-        decoder_embed_dim=512,
-        decoder_depth=8,
-        decoder_num_heads=16,
-        mlp_ratio=4.0,
-        norm_layer=nn.LayerNorm,
-        norm_pix_loss=False,
-    ):
+    def __init__(self,
+                img_size=224,
+                patch_size=16,
+                in_chans=3,
+                embed_dim=1024, # replaced
+                depth=24,
+                num_heads=16, # replaced
+                decoder_embed_dim=512,
+                decoder_depth=8, # replaced
+                decoder_num_heads=16,
+                mlp_ratio=4.0, # replaced
+                norm_layer=nn.LayerNorm,
+                norm_pix_loss=False,
+                # shunted arguments
+                num_classes=1000, 
+                embed_dims=[64, 128, 256, 512],
+                nums_heads=[1, 2, 4, 8],
+                mlp_ratios=[4, 4, 4, 4], 
+                qkv_bias=False, 
+                qk_scale=None,
+                drop_rate=0.,
+                attn_drop_rate=0., 
+                drop_path_rate=0., 
+                depths=[3, 4, 6, 3], 
+                sr_ratios=[8, 4, 2, 1],
+                num_stages=4, 
+                num_conv=0
+                ):
         super().__init__()
 
         self.in_c = in_chans
+        self.num_classes = num_classes # shunted
+        self.depths = depths # shunted
+        self.num_stages = num_stages # shunted
 
         # --------------------------------------------------------------------------
         # MAE encoder specifics
-        self.patch_embed = PatchEmbed(img_size, patch_size, in_chans, embed_dim)
+        # self.patch_embed = PatchEmbed(img_size, patch_size, in_chans, embed_dim) # replaced
+        # START shunted code #
+        dpr = [x.item() for x in torch.linspace(0, drop_path_rate,
+                                                sum(depths))]  # stochastic depth decay rule
+        cur = 0
+        for i in range(num_stages):
+            if i == 0:
+                patch_embed = Head(num_conv)
+            else:
+                patch_embed = OverlapPatchEmbed(img_size=img_size if i == 0 else img_size // (2 ** (i + 1)),
+                                                patch_size=7 if i == 0 else 3,
+                                                stride=4 if i == 0 else 2,
+                                                in_chans=in_chans if i == 0 else embed_dims[i - 1],
+                                                embed_dim=embed_dims[i])
+
+            block = nn.ModuleList([Block(dim=embed_dims[i], 
+                                         num_heads=num_heads[i], 
+                                         mlp_ratio=mlp_ratios[i], 
+                                         qkv_bias=qkv_bias, 
+                                         qk_scale=qk_scale,
+                                         drop=drop_rate, 
+                                         attn_drop=attn_drop_rate, 
+                                         drop_path=dpr[cur + j], 
+                                         norm_layer=norm_layer,
+                                         sr_ratio=sr_ratios[i])
+                                    for j in range(depths[i])])
+            norm = norm_layer(embed_dims[i])
+            cur += depths[i]
+
+            setattr(self, f"patch_embed{i + 1}", patch_embed)
+            setattr(self, f"block{i + 1}", block)
+            setattr(self, f"norm{i + 1}", norm)
+        # END shunted code #
+        
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
