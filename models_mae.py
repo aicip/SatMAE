@@ -20,22 +20,19 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
                 img_size=224,
                 patch_size=16,
                 in_chans=3,
-                embed_dim=1024, # replaced
+                # embed_dim=1024, # replaced
                 depth=24,
-                num_heads=16, # replaced
+                # num_heads=16, # replaced
                 decoder_embed_dim=512,
-                decoder_depth=8, # replaced
+                # decoder_depth=8, # replaced
                 decoder_num_heads=16,
-                mlp_ratio=4.0, # replaced
+                # mlp_ratio=4.0, # replaced
                 norm_layer=nn.LayerNorm,
                 norm_pix_loss=False,
                 # shunted arguments
-                num_classes=1000, 
                 embed_dims=[64, 128, 256, 512],
-                nums_heads=[1, 2, 4, 8],
+                num_heads=[1, 2, 4, 8],
                 mlp_ratios=[4, 4, 4, 4], 
-                qkv_bias=False, 
-                qk_scale=None,
                 drop_rate=0.,
                 attn_drop_rate=0., 
                 drop_path_rate=0., 
@@ -47,14 +44,40 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
         super().__init__()
 
         self.in_c = in_chans
-        self.num_classes = num_classes # shunted
         self.depths = depths # shunted
         self.num_stages = num_stages # shunted
 
         # --------------------------------------------------------------------------
         # MAE encoder specifics
-        # self.patch_embed = PatchEmbed(img_size, patch_size, in_chans, embed_dim) # replaced
-        # START shunted code #
+        # --- START replaced code --- #
+        # self.patch_embed = PatchEmbed(img_size, patch_size, in_chans, embed_dim)
+        # num_patches = self.patch_embed.num_patches
+        # self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        # self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim), 
+        #                               requires_grad=False)  # fixed sin-cos embedding
+        ## self.blocks = nn.ModuleList([
+        ##     Block(embed_dim, 
+        ##           num_heads, 
+        ##           mlp_ratio, 
+        ##           qkv_bias=True, 
+        ##           qk_scale=None, 
+        ##           norm_layer=norm_layer)
+        ##     for i in range(depth)])
+        # self.blocks = nn.ModuleList(
+        #     [
+        #         Block(
+        #             embed_dim,
+        #             num_heads,
+        #             mlp_ratio,
+        #             qkv_bias=True,
+        #             norm_layer=norm_layer,
+        #         )
+        #         for _ in range(depth)
+        #     ]
+        # )
+        # self.norm = norm_layer(embed_dim)
+        # --- END replaced code --- #
+        # --- START shunted code --- #
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate,
                                                 sum(depths))]  # stochastic depth decay rule
         cur = 0
@@ -71,8 +94,7 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
             block = nn.ModuleList([Block(dim=embed_dims[i], 
                                          num_heads=num_heads[i], 
                                          mlp_ratio=mlp_ratios[i], 
-                                         qkv_bias=qkv_bias, 
-                                         qk_scale=qk_scale,
+                                         qkv_bias=True, 
                                          drop=drop_rate, 
                                          attn_drop=attn_drop_rate, 
                                          drop_path=dpr[cur + j], 
@@ -81,35 +103,26 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
                                     for j in range(depths[i])])
             norm = norm_layer(embed_dims[i])
             cur += depths[i]
-
+            
+            num_patches = patch_embed.num_patches
+            cls_token = nn.Parameter(torch.zeros(1, 1, embed_dims[i]))
+            pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dims[i]), 
+                                          requires_grad=False)  # fixed sin-cos embedding
+            
             setattr(self, f"patch_embed{i + 1}", patch_embed)
             setattr(self, f"block{i + 1}", block)
             setattr(self, f"norm{i + 1}", norm)
-        # END shunted code #
+            setattr(self, f"cls_token{i + 1}", cls_token)
+            setattr(self, f"pos_embed{i + 1}", pos_embed)
+        # Note: Replace the orignal patch_embed, block, norm, cls_token, pos_embed (self vars)
+        # With the self vars:
+        # patch_embed1, patch_embed2, patch_embed3, patch_embed4
+        # block1, block2, block3, block4
+        # norm1, norm2, norm3, norm4
+        # cls_token1, cls_token2, cls_token3, cls_token4
+        # pos_embed1, pos_embed2, pos_embed3, pos_embed4
+        # --- END shunted code --- #        
         
-        num_patches = self.patch_embed.num_patches
-
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
-        self.pos_embed = nn.Parameter(
-            torch.zeros(1, num_patches + 1, embed_dim), requires_grad=False
-        )  # fixed sin-cos embedding
-
-        # self.blocks = nn.ModuleList([
-        #     Block(embed_dim, num_heads, mlp_ratio, qkv_bias=True, qk_scale=None, norm_layer=norm_layer)
-        #     for i in range(depth)])
-        self.blocks = nn.ModuleList(
-            [
-                Block(
-                    embed_dim,
-                    num_heads,
-                    mlp_ratio,
-                    qkv_bias=True,
-                    norm_layer=norm_layer,
-                )
-                for _ in range(depth)
-            ]
-        )
-        self.norm = norm_layer(embed_dim)
         # --------------------------------------------------------------------------
 
         # --------------------------------------------------------------------------
