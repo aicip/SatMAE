@@ -76,8 +76,8 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
                                                 sum(depths))]  # stochastic depth decay rule
         cur = 0
         for i in range(num_stages):
-            if i == 0:
-                patch_embed = Head(num_conv)
+            if i == 0 and False:  # TODO: temporarily disabled
+                patch_embed = Head(num_conv)  # TODO: is this required for MAE?
             else:
                 patch_embed = OverlapPatchEmbed(img_size=img_size if i == 0 else img_size // (2 ** (i + 1)),
                                                 # patch_size=7 if i == 0 else 3, # TODO: this is from shunted, but not sure if it's correct
@@ -107,7 +107,7 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
             setattr(self, f"patch_embed{i + 1}", patch_embed)
             setattr(self, f"blocks{i + 1}", blocks)
             setattr(self, f"norm{i + 1}", norm)
-            setattr(self, f"cls_token{i + 1}", cls_token)
+            setattr(self, f"cls_token{i + 1}", cls_token)  # TODO: Maybe only 1 cls_token is needed?
             setattr(self, f"pos_embed{i + 1}", pos_embed)
         # Note: Replace the orignal patch_embed, block, norm, cls_token, pos_embed (self vars)
         # With the self vars:
@@ -195,9 +195,10 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
             )
             setattr(getattr(self, f"pos_embed{i + 1}"), "data", torch.from_numpy(pos_embed).float().unsqueeze(0))
 
+        patch_embed_last = getattr(self, f"patch_embed{self.num_stages}")
         decoder_pos_embed = get_2d_sincos_pos_embed(
             self.decoder_pos_embed.shape[-1],
-            int(self.patch_embed[-1].num_patches**0.5), # replaced with shunted equiv
+            int(patch_embed_last.num_patches**0.5), # replaced with shunted equiv
             cls_token=True,
         )
         self.decoder_pos_embed.data.copy_(
@@ -212,7 +213,7 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
             
             # timm's trunc_normal_(std=.02) is effectively normal_(std=0.02) as cutoff is too big (2.)
             torch.nn.init.normal_(getattr(self, f"cls_token{i + 1}"), std=0.02)
-            torch.nn.init.normal_(getattr(self, f"mask_token{i + 1}"), std=0.02)
+            torch.nn.init.normal_(self.mask_token, std=0.02)
         # --- END shunted equiv code --- #
 
         # initialize nn.Linear and nn.LayerNorm
@@ -330,7 +331,8 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
             # add pos embed w/o cls token
             x = x + self_pos_embed[:, 1:, :]
             
-            # masking: length -> length * mask_ratio
+            # masking: length -> length * mask_ratio 
+            # TODO: should I keep all masks and ids?
             x, mask, ids_restore = self.random_masking(x, mask_ratio)
             
             # append cls token
@@ -344,6 +346,8 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
             x = self_norm(x)
         # --- END shunted equiv code --- #
 
+        # TODO: should I return all masks and ids?
+        # mask goes to the forward_loss and ids_restore goes to the forward_decoder
         return x, mask, ids_restore
 
     def forward_decoder(self, x, ids_restore):
@@ -449,8 +453,22 @@ def mae_vit_huge_patch14_dec512d8b(**kwargs):
     )
     return model
 
+def shunted_mae_vit_large_patch16_dec512d8b(**kwargs):
+    model = MaskedAutoencoderViT(
+        # embed_dim=1024,
+        depth=24,
+        # num_heads=16,
+        decoder_embed_dim=512,
+        decoder_depth=8,
+        decoder_num_heads=16,
+        # mlp_ratio=4,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        **kwargs
+    )
+    return model
 
 # set recommended archs
 mae_vit_base_patch16 = mae_vit_base_patch16_dec512d8b  # decoder: 512 dim, 8 blocks
 mae_vit_large_patch16 = mae_vit_large_patch16_dec512d8b  # decoder: 512 dim, 8 blocks
+shunted_mae_vit_large_patch16 = shunted_mae_vit_large_patch16_dec512d8b  # decoder: 512 dim, 8 blocks
 mae_vit_huge_patch14 = mae_vit_huge_patch14_dec512d8b  # decoder: 512 dim, 8 blocks

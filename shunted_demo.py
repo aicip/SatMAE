@@ -193,6 +193,7 @@ def main(args):
     args.train_path=f"/data2/HDD_16TB/fmow-rgb-preproc/train_{args.input_size}.csv"
     args.output_dir=f"/data2/HDD_16TB/ICCV/Model_Saving/out_i{args.input_size}_p{args.patch_size}_"\
                     f"b{args.batch_size}_e{args.epochs}_{args.attention}_demo"
+    args.model = "shunted_mae_vit_large_patch16"
     
     misc.init_distributed_mode(args)
 
@@ -220,7 +221,18 @@ def main(args):
         img_size=args.input_size,
         patch_size=args.patch_size,
         in_chans=dataset_train.in_c,
-        norm_pix_loss=args.norm_pix_loss)#,
+        norm_pix_loss=args.norm_pix_loss,
+        # args after shunted changes
+        embed_dims=[64, 128, 256, 512],
+        num_heads=[1, 2, 4, 8],
+        mlp_ratios=[4, 4, 4, 4], 
+        drop_rate=0.,
+        attn_drop_rate=0., 
+        drop_path_rate=0., 
+        depths=[3, 4, 6, 3], 
+        sr_ratios=[8, 4, 2, 1],
+        num_stages=4, 
+        num_conv=0)#,
         # attention=args.attention
     # )
     model.to(device)
