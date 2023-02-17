@@ -86,7 +86,7 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
                                                 in_chans=in_chans if i == 0 else embed_dims[i - 1],
                                                 embed_dim=embed_dims[i])
 
-            block = nn.ModuleList([Block(dim=embed_dims[i], 
+            blocks = nn.ModuleList([Block(dim=embed_dims[i], 
                                          num_heads=num_heads[i], 
                                          mlp_ratio=mlp_ratios[i], 
                                          qkv_bias=True, 
@@ -105,7 +105,7 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
                                           requires_grad=False)  # fixed sin-cos embedding
             
             setattr(self, f"patch_embed{i + 1}", patch_embed)
-            setattr(self, f"block{i + 1}", block)
+            setattr(self, f"blocks{i + 1}", blocks)
             setattr(self, f"norm{i + 1}", norm)
             setattr(self, f"cls_token{i + 1}", cls_token)
             setattr(self, f"pos_embed{i + 1}", pos_embed)
@@ -298,24 +298,51 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
         return x_masked, mask, ids_restore
 
     def forward_encoder(self, x, mask_ratio):
-        # embed patches
-        x = self.patch_embed(x)
-
-        # add pos embed w/o cls token
-        x = x + self.pos_embed[:, 1:, :]
-
-        # masking: length -> length * mask_ratio
-        x, mask, ids_restore = self.random_masking(x, mask_ratio)
-
-        # append cls token
-        cls_token = self.cls_token + self.pos_embed[:, :1, :]
-        cls_tokens = cls_token.expand(x.shape[0], -1, -1)
-        x = torch.cat((cls_tokens, x), dim=1)
-        x, H, W = self.patch_embed(x)
-        # apply Transformer blocks
-        for blk in self.blocks:
-            x = blk(x)
-        x = self.norm(x)
+        # --- START replaced code --- #
+        # # embed patches
+        # x = self.patch_embed(x)
+        # # add pos embed w/o cls token
+        # x = x + self.pos_embed[:, 1:, :]
+        # # masking: length -> length * mask_ratio
+        # x, mask, ids_restore = self.random_masking(x, mask_ratio)
+        # # append cls token
+        # cls_token = self.cls_token + self.pos_embed[:, :1, :]
+        # cls_tokens = cls_token.expand(x.shape[0], -1, -1)
+        # x = torch.cat((cls_tokens, x), dim=1)
+        # x, H, W = self.patch_embed(x)
+        # # apply Transformer blocks
+        # for blk in self.blocks:
+        #     x = blk(x)
+        # x = self.norm(x)
+        # --- END replaced code --- #
+        
+        # --- START shunted equiv code --- #
+        for i in range(self.num_stages):
+            self_patch_embed = getattr(self, f"patch_embed{i + 1}")
+            self_pos_embed = getattr(self, f"pos_embed{i + 1}")
+            self_cls_token = getattr(self, f"cls_token{i + 1}")
+            self_blocks = getattr(self, f"block{i + 1}")
+            self_norm = getattr(self, f"norm{i + 1}")  
+                      
+            # embed patches
+            x = self_patch_embed(x)
+            
+            # add pos embed w/o cls token
+            x = x + self_pos_embed[:, 1:, :]
+            
+            # masking: length -> length * mask_ratio
+            x, mask, ids_restore = self.random_masking(x, mask_ratio)
+            
+            # append cls token
+            cls_token = self_cls_token + self_pos_embed[:, :1, :]
+            cls_tokens = cls_token.expand(x.shape[0], -1, -1)
+            x = torch.cat((cls_tokens, x), dim=1)
+            x, H, W = self_patch_embed(x)
+            # apply Transformer blocks
+            for blk in self_blocks:
+                x = blk(x)
+            x = self_norm(x)
+        # --- END shunted equiv code --- #
 
         return x, mask, ids_restore
 
