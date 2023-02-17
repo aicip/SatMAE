@@ -6,7 +6,7 @@
 # --------------------------------------------------------
 
 from functools import partial
-
+import math
 import torch
 import torch.nn as nn
 # from timm.models.vision_transformer import PatchEmbed
@@ -49,20 +49,13 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
 
         # --------------------------------------------------------------------------
         # MAE encoder specifics
+        
         # --- START replaced code --- #
         # self.patch_embed = PatchEmbed(img_size, patch_size, in_chans, embed_dim)
         # num_patches = self.patch_embed.num_patches
         # self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
         # self.pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dim), 
         #                               requires_grad=False)  # fixed sin-cos embedding
-        ## self.blocks = nn.ModuleList([
-        ##     Block(embed_dim, 
-        ##           num_heads, 
-        ##           mlp_ratio, 
-        ##           qkv_bias=True, 
-        ##           qk_scale=None, 
-        ##           norm_layer=norm_layer)
-        ##     for i in range(depth)])
         # self.blocks = nn.ModuleList(
         #     [
         #         Block(
@@ -77,7 +70,8 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
         # )
         # self.norm = norm_layer(embed_dim)
         # --- END replaced code --- #
-        # --- START shunted code --- #
+        
+        # --- START shunted equiv code --- #
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate,
                                                 sum(depths))]  # stochastic depth decay rule
         cur = 0
@@ -86,7 +80,8 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
                 patch_embed = Head(num_conv)
             else:
                 patch_embed = OverlapPatchEmbed(img_size=img_size if i == 0 else img_size // (2 ** (i + 1)),
-                                                patch_size=7 if i == 0 else 3,
+                                                # patch_size=7 if i == 0 else 3, # TODO: this is from shunted, but not sure if it's correct
+                                                patch_size=patch_size if i == 0 else 3, # TODO: is this correct?
                                                 stride=4 if i == 0 else 2,
                                                 in_chans=in_chans if i == 0 else embed_dims[i - 1],
                                                 embed_dim=embed_dims[i])
@@ -121,13 +116,13 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
         # norm1, norm2, norm3, norm4
         # cls_token1, cls_token2, cls_token3, cls_token4
         # pos_embed1, pos_embed2, pos_embed3, pos_embed4
-        # --- END shunted code --- #        
+        # --- END shunted equiv code --- #        
         
         # --------------------------------------------------------------------------
 
         # --------------------------------------------------------------------------
         # MAE decoder specifics
-        self.decoder_embed = nn.Linear(embed_dims[-1], # replaced with shunted code
+        self.decoder_embed = nn.Linear(embed_dims[-1], # replaced with shunted equiv
                                        decoder_embed_dim, 
                                        bias=True)
 
@@ -138,20 +133,16 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
                                                           decoder_embed_dim), 
                                               requires_grad=False
                                               )  # fixed sin-cos embedding
-
-        # self.decoder_blocks = nn.ModuleList([
-        #     Block(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, qk_scale=None, norm_layer=norm_layer)
-        #     for i in range(decoder_depth)])
         self.decoder_blocks = nn.ModuleList(
             [
                 Block(
                     decoder_embed_dim,
                     decoder_num_heads,
-                    mlp_ratios[-1], # replaced with shunted code
+                    mlp_ratios[-1], # replaced with shunted equiv (mlp_ratios default: all 4)
                     qkv_bias=True,
                     norm_layer=norm_layer,
                 )
-                for i in range(decoder_depth)
+                for _ in range(decoder_depth)
             ]
         )
 
@@ -167,30 +158,62 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
 
     def initialize_weights(self):
         # initialization
-        # initialize (and freeze) pos_embed by sin-cos embedding
-        pos_embed = get_2d_sincos_pos_embed(
-            self.pos_embed.shape[-1],
-            int(self.patch_embed.num_patches**0.5),
-            cls_token=True,
-        )
-        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
+        
+        # --- START replaced code --- #
+        # # initialize (and freeze) pos_embed by sin-cos embedding
+        # pos_embed = get_2d_sincos_pos_embed(
+        #     self.pos_embed.shape[-1],
+        #     int(self.patch_embed.num_patches**0.5),
+        #     cls_token=True,
+        # )
+        # self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
+        # decoder_pos_embed = get_2d_sincos_pos_embed(
+        #     self.decoder_pos_embed.shape[-1],
+        #     int(self.patch_embed.num_patches**0.5),
+        #     cls_token=True,
+        # )
+        # self.decoder_pos_embed.data.copy_(
+        #     torch.from_numpy(decoder_pos_embed).float().unsqueeze(0)
+        # )
+        # # initialize patch_embed like nn.Linear (instead of nn.Conv2d)
+        # w = self.patch_embed.proj.weight.data
+        # torch.nn.init.xavier_uniform_(w.view([w.shape[0], -1]))
+        # # timm's trunc_normal_(std=.02) is effectively normal_(std=0.02) as cutoff is too big (2.)
+        # torch.nn.init.normal_(self.cls_token, std=0.02)
+        # torch.nn.init.normal_(self.mask_token, std=0.02)
+        # --- END replaced code --- #
+        
+        # --- START shunted equiv code --- #
+        for i in range(self.num_stages):
+            self_patch_embed = getattr(self, f"patch_embed{i + 1}")
+            self_pos_embed = getattr(self, f"pos_embed{i + 1}")
+            # initialize (and freeze) pos_embed by sin-cos embedding
+            pos_embed = get_2d_sincos_pos_embed(
+                self_pos_embed.shape[-1],
+                int(self_patch_embed.num_patches**0.5),
+                cls_token=True,
+            )
+            setattr(getattr(self, f"pos_embed{i + 1}"), "data", torch.from_numpy(pos_embed).float().unsqueeze(0))
 
         decoder_pos_embed = get_2d_sincos_pos_embed(
             self.decoder_pos_embed.shape[-1],
-            int(self.patch_embed.num_patches**0.5),
+            int(self.patch_embed[-1].num_patches**0.5), # replaced with shunted equiv
             cls_token=True,
         )
         self.decoder_pos_embed.data.copy_(
             torch.from_numpy(decoder_pos_embed).float().unsqueeze(0)
         )
-
-        # initialize patch_embed like nn.Linear (instead of nn.Conv2d)
-        w = self.patch_embed.proj.weight.data
-        torch.nn.init.xavier_uniform_(w.view([w.shape[0], -1]))
-
-        # timm's trunc_normal_(std=.02) is effectively normal_(std=0.02) as cutoff is too big (2.)
-        torch.nn.init.normal_(self.cls_token, std=0.02)
-        torch.nn.init.normal_(self.mask_token, std=0.02)
+        
+        for i in range(self.num_stages):  # TODO: move up? order matters?
+            # initialize patch_embed like nn.Linear (instead of nn.Conv2d)
+            self_patch_embed = getattr(self, f"patch_embed{i + 1}")
+            w = self_patch_embed.proj.weight.data
+            torch.nn.init.xavier_uniform_(w.view([w.shape[0], -1]))
+            
+            # timm's trunc_normal_(std=.02) is effectively normal_(std=0.02) as cutoff is too big (2.)
+            torch.nn.init.normal_(getattr(self, f"cls_token{i + 1}"), std=0.02)
+            torch.nn.init.normal_(getattr(self, f"mask_token{i + 1}"), std=0.02)
+        # --- END shunted equiv code --- #
 
         # initialize nn.Linear and nn.LayerNorm
         self.apply(self._init_weights)
@@ -204,6 +227,12 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
         elif isinstance(m, nn.LayerNorm):
             nn.init.constant_(m.bias, 0)
             nn.init.constant_(m.weight, 1.0)
+        elif isinstance(m, nn.Conv2d):  # from shunted code
+            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            fan_out //= m.groups
+            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
+            if m.bias is not None:
+                m.bias.data.zero_()
 
     def patchify(self, imgs, p, c):
         """
