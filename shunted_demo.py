@@ -183,13 +183,13 @@ def get_args_parser():
 
 
 def main(args):
-    args.device="cuda:0"
+    args.device="cuda:1"
     # args.attention="shunted"
     args.attention="scaled_dot_product"
     args.epochs=1
-    args.input_size=112
-    args.patch_size=16
-    args.batch_size=64
+    args.input_size=64
+    args.patch_size=4
+    args.batch_size=1
     args.train_path=f"/data2/HDD_16TB/fmow-rgb-preproc/train_{args.input_size}.csv"
     args.output_dir=f"/data2/HDD_16TB/ICCV/Model_Saving/out_i{args.input_size}_p{args.patch_size}_"\
                     f"b{args.batch_size}_e{args.epochs}_{args.attention}_demo"
@@ -223,15 +223,15 @@ def main(args):
         in_chans=dataset_train.in_c,
         norm_pix_loss=args.norm_pix_loss,
         # args after shunted changes
-        embed_dims=[64, 128, 256, 512],
-        num_heads=[1, 2, 4, 8],
-        mlp_ratios=[4, 4, 4, 4], 
+        embed_dims=[64],
+        num_heads=[2],
+        mlp_ratios=[4], 
         drop_rate=0.,
         attn_drop_rate=0., 
         drop_path_rate=0., 
-        depths=[3, 4, 6, 3], 
-        sr_ratios=[8, 4, 2, 1],
-        num_stages=4, 
+        depths=[8], 
+        sr_ratios=[4],
+        num_stages=1, 
         num_conv=0)#,
         # attention=args.attention
     # )
