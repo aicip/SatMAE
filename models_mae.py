@@ -134,14 +134,14 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
             
             num_patches = patch_embed.num_patches
             # cls_token = nn.Parameter(torch.zeros(1, 1, embed_dims[i]))
-            # pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dims[i]), 
-                                        #   requires_grad=False)  # fixed sin-cos embedding
+            pos_embed = nn.Parameter(torch.zeros(1, num_patches + 1, embed_dims[i]), 
+                                          requires_grad=False)  # fixed sin-cos embedding
             
             setattr(self, f"patch_embed{i + 1}", patch_embed)
             setattr(self, f"blocks{i + 1}", blocks)
             setattr(self, f"norm{i + 1}", norm)
             # setattr(self, f"cls_token{i + 1}", cls_token)  # TODO: Maybe only 1 cls_token is needed?
-            # setattr(self, f"pos_embed{i + 1}", pos_embed)
+            setattr(self, f"pos_embed{i + 1}", pos_embed)
         # Note: Replace the orignal patch_embed, block, norm, cls_token, pos_embed (self vars)
         # With the self vars:
         # patch_embed1, patch_embed2, patch_embed3, patch_embed4
@@ -335,24 +335,31 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
 
     def forward_encoder(self, x, mask_ratio):
         # --- START replaced code --- #
-        #     # embed patches
-        #     x = self.patch_embed(x)
+        # # embed patches
+        # x, H, W  = self.patch_embed1(x)
+        # print(f"patch_embed1.x.shape: {x.shape}")
 
-        #     # add pos embed w/o cls token
-        #     x = x + self.pos_embed[:, 1:, :]
+        # # add pos embed w/o cls token
+        # print(f"pos_embed1.shape: {self.pos_embed1[:, 1:, :].shape}")
+        # x = x + self.pos_embed1[:, 1:, :]
+        # print(f"pos_embed1.x.shape: {x.shape}")
 
-        #     # masking: length -> length * mask_ratio
-        #     x, mask, ids_restore = self.random_masking(x, mask_ratio)
+        # # masking: length -> length * mask_ratio
+        # x, mask, ids_restore = self.random_masking(x, mask_ratio)
+        # print(f"random_masking1.x.shape: {x.shape}")
 
-        #     # append cls token
-        #     cls_token = self.cls_token + self.pos_embed[:, :1, :]
-        #     cls_tokens = cls_token.expand(x.shape[0], -1, -1)
-        #     x = torch.cat((cls_tokens, x), dim=1)
+        # # append cls token
+        # cls_token = self.cls_token1 + self.pos_embed1[:, :1, :]
+        # cls_tokens = cls_token.expand(x.shape[0], -1, -1)
+        # x = torch.cat((cls_tokens, x), dim=1)
+        # print(f"cls_token1.x.shape: {x.shape}")
 
-        #     # apply Transformer blocks
-        #     for blk in self.blocks:
-        #         x = blk(x)
-        #     x = self.norm(x)
+        # # apply Transformer blocks
+        # for blk_ind, blk in enumerate(self.blocks1):
+        #     x = blk(x)
+        #     print(f"block1_{blk_ind}.x.shape: {x.shape}")
+        # x = self.norm(x)
+        # raise NotImplementedError
         # --- END replaced code --- #
         # --- START shunted equiv code --- #
         B = x.shape[0]
@@ -362,7 +369,7 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
             print("++"*10)
             print(f"Stage {i+1}:")
             self_patch_embed = getattr(self, f"patch_embed{i + 1}")
-            # self_pos_embed = getattr(self, f"pos_embed{i + 1}")
+            self_pos_embed = getattr(self, f"pos_embed{i + 1}")
             # self_cls_token = getattr(self, f"cls_token{i + 1}")
             self_blocks = getattr(self, f"blocks{i + 1}")
             self_norm = getattr(self, f"norm{i + 1}")  
@@ -378,8 +385,8 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
             print(f"[After mask scale] B, H, W: {B, H, W}")
             
             # add pos embed w/o cls token
-            # print(f"pos_embed{i + 1}.shape: {self_pos_embed[:, 1:, :].shape}")
-            # x = x + self_pos_embed[:, 1:, :]
+            print(f"pos_embed{i + 1}.shape: {self_pos_embed[:, 1:, :].shape}")
+            x = x + self_pos_embed[:, 1:, :]
             
             # masking: length -> length * mask_ratio 
             # TODO: should I keep all masks and ids?

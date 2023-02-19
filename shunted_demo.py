@@ -217,6 +217,9 @@ def main(args):
     )
 
     # define the model
+    # TODO: try:
+    # - Many stages
+    # - Different rations, depths, heads, etc.
     model = models_mae.__dict__[args.model](
         img_size=args.input_size,
         patch_size=args.patch_size,
