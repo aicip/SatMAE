@@ -187,7 +187,7 @@ def main(args):
     # args.attention="shunted"
     args.attention="scaled_dot_product"
     args.epochs=1
-    args.input_size=64
+    args.input_size=224
     args.patch_size=4
     args.batch_size=1
     args.train_path=f"/data2/HDD_16TB/fmow-rgb-preproc/train_{args.input_size}.csv"
@@ -226,15 +226,15 @@ def main(args):
         in_chans=dataset_train.in_c,
         norm_pix_loss=args.norm_pix_loss,
         # args after shunted changes
-        embed_dims=[64],
-        num_heads=[2],
-        mlp_ratios=[4], 
+        embed_dims=[64, 64],
+        num_heads=[2, 2],
+        mlp_ratios=[4, 4], 
         drop_rate=0.,
         attn_drop_rate=0., 
         drop_path_rate=0., 
-        depths=[8], 
-        sr_ratios=[4],
-        num_stages=1, 
+        depths=[8, 8], 
+        sr_ratios=[4, 4],
+        num_stages=2, 
         num_conv=0)#,
         # attention=args.attention
     # )
