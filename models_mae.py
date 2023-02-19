@@ -90,7 +90,7 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
         cur = 0
         for i in range(num_stages):
             if i == 0 and False:  # TODO: temporarily disabled
-                patch_embed = ShuntedHead(num_conv)  # TODO: is this required for MAE?
+                patch_embed = ShuntedHead(num_conv)  # TODO: Can't get number of patches from this
             else: # TODO: should change the sizes for every stage but keep it until pipeline is working
                 # patch_embed = PatchEmbed(img_size=img_size, 
                 #                          patch_size=patch_size, 
@@ -140,8 +140,8 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
             setattr(self, f"patch_embed{i + 1}", patch_embed)
             setattr(self, f"blocks{i + 1}", blocks)
             setattr(self, f"norm{i + 1}", norm)
-            # setattr(self, f"cls_token{i + 1}", cls_token)  # TODO: Maybe only 1 cls_token is needed?
-            setattr(self, f"pos_embed{i + 1}", pos_embed)
+            # setattr(self, f"cls_token{i + 1}", cls_token)  # TODO: Shunted is not using this
+            setattr(self, f"pos_embed{i + 1}", pos_embed)  # TODO: Shunted is not using this
         # Note: Replace the orignal patch_embed, block, norm, cls_token, pos_embed (self vars)
         # With the self vars:
         # patch_embed1, patch_embed2, patch_embed3, patch_embed4
@@ -361,6 +361,7 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
         # x = self.norm(x)
         # raise NotImplementedError
         # --- END replaced code --- #
+        
         # --- START shunted equiv code --- #
         B = x.shape[0]
         print("---"*20)
@@ -389,7 +390,8 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
             x = x + self_pos_embed[:, 1:, :]
             
             # masking: length -> length * mask_ratio 
-            # TODO: should I keep all masks and ids?
+            # TODO: should I keep all masks and ids? 
+            # Or maybe I should only create one mask?
             x, mask, ids_restore = self.random_masking(x, mask_ratio)
             print(f"random_masking{i + 1}.x.shape: {x.shape}")
             # _, _, H, W = self_patch_embed.proj(x).shape
@@ -412,7 +414,7 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
             print(f"Output x.shape: {x.shape}")
         # --- END shunted equiv code --- #
 
-        # TODO: should I return all masks and ids?
+        # TODO: Maybe I have to return all (all stages) masks and ids?
         # mask goes to the forward_loss and ids_restore goes to the forward_decoder
         return x, mask, ids_restore
 
@@ -443,7 +445,7 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
 
         # remove cls token
         x = x[:, 1:, :]
-
+        print(f"decoder.x.shape: {x.shape}")
         return x
 
     def forward_loss(self, imgs, pred, mask):
@@ -452,20 +454,40 @@ class MaskedAutoencoderViT(nn.Module):  # TODO: rename to MaskedShuntedAutoencod
         pred: [N, L, p*p*3]
         mask: [N, L], 0 is keep, 1 is remove,
         """
-        # target = imgs[:, :3, :, :]
-        # pred = self.unpatchify(pred, self.patch_embed.patch_size[0], self.in_c)
-        # pred = self.patchify(pred[:, :3, :, :], self.patch_embed.patch_size[0], 3)
-        # target = self.patchify(target, self.patch_embed.patch_size[0], 3)
-        target = self.patchify(imgs, self.patch_embed.patch_size[0], self.in_c)
+        
+        # --- START replaced code --- #
+        # # target = imgs[:, :3, :, :]
+        # # pred = self.unpatchify(pred, self.patch_embed.patch_size[0], self.in_c)
+        # # pred = self.patchify(pred[:, :3, :, :], self.patch_embed.patch_size[0], 3)
+        # # target = self.patchify(target, self.patch_embed.patch_size[0], 3)
+        # target = self.patchify(imgs, self.patch_embed.patch_size[0], self.in_c)
+        # if self.norm_pix_loss:
+        #     mean = target.mean(dim=-1, keepdim=True)
+        #     var = target.var(dim=-1, keepdim=True)
+        #     target = (target - mean) / (var + 1.0e-6) ** 0.5
+        # loss = (pred - target) ** 2
+        # loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
+        # loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
+        # --- END replaced code --- #
+        
+        # --- START shunted equiv code --- #
+        target = imgs
+        print(f"imgs.shape: {imgs.shape}")
+        for i in range(self.num_stages):
+            print("++"*10)
+            print(f"Stage {i+1}:")
+            self_patch_embed = getattr(self, f"patch_embed{i + 1}")
+            target = self.patchify(target, self_patch_embed.patch_size[0], self.in_c)
+            print(f"patchify{i + 1}.target.shape: {target.shape}")
         if self.norm_pix_loss:
             mean = target.mean(dim=-1, keepdim=True)
             var = target.var(dim=-1, keepdim=True)
             target = (target - mean) / (var + 1.0e-6) ** 0.5
-
         loss = (pred - target) ** 2
         loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
-
         loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
+        # --- END shunted equiv code --- #
+
         return loss
 
     def forward(self, imgs, mask_ratio=0.75):
