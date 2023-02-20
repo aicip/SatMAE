@@ -93,6 +93,7 @@ class MaskedAutoencoderViT(nn.Module):
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate,
                                                 sum(depths))]  # stochastic depth decay rule
         cur = 0
+        num_patches = []
         for i in range(num_stages):
             if i == 0 and False:  # TODO: temporarily disabled
                 # TODO: Can't get number of patches from this
@@ -138,10 +139,10 @@ class MaskedAutoencoderViT(nn.Module):
             norm = norm_layer(embed_dims[i])
             cur += depths[i]
 
-            num_patches = patch_embed.num_patches
+            num_patches.append(patch_embed.num_patches)
             # cls_token = nn.Parameter(torch.zeros(1, 1, embed_dims[i]))
             pos_embed = nn.Parameter(torch.zeros(1,
-                                                 num_patches + 1,
+                                                 num_patches[i] + 1,
                                                  embed_dims[i]),
                                      requires_grad=False)  # fixed sin-cos embedding
 
@@ -171,7 +172,7 @@ class MaskedAutoencoderViT(nn.Module):
         self.mask_token = nn.Parameter(torch.zeros(1, 1, decoder_embed_dim))
 
         self.decoder_pos_embed = nn.Parameter(torch.zeros(1,
-                                                          num_patches + 1,
+                                                          num_patches[0] + 1,
                                                           decoder_embed_dim),
                                               requires_grad=False
                                               )  # fixed sin-cos embedding
@@ -238,11 +239,13 @@ class MaskedAutoencoderViT(nn.Module):
         #     )
         #     setattr(getattr(self, f"pos_embed{i + 1}"), "data", torch.from_numpy(pos_embed).float().unsqueeze(0))
 
-        patch_embed_last = getattr(self, f"patch_embed{self.num_stages}")
+        # patch_ind = self.num_stages-1
+        patch_ind = 0
+        self_patch_embed = getattr(self, f"patch_embed{patch_ind+1}")
         decoder_pos_embed = get_2d_sincos_pos_embed(
             self.decoder_pos_embed.shape[-1],
             # replaced with shunted equiv
-            int(patch_embed_last.num_patches**0.5),
+            int(self_patch_embed.num_patches**0.5),
             cls_token=True,
         )
         self.decoder_pos_embed.data.copy_(
@@ -429,20 +432,29 @@ class MaskedAutoencoderViT(nn.Module):
         return x, mask, ids_restore
 
     def forward_decoder(self, x, ids_restore):
+        print("---"*8, " Decoder ", "---"*8)
         # embed tokens
         x = self.decoder_embed(x)
+        print(f"decoder_embed.x.shape: {x.shape}")
 
         # append mask tokens to sequence
         mask_tokens = self.mask_token.repeat(
-            x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1
+            x.shape[0], 
+            ids_restore.shape[1] + 1 - x.shape[1], 1
         )
+        print(f"mask_tokens.shape: {mask_tokens.shape}")
         x_ = torch.cat([x[:, 1:, :], mask_tokens], dim=1)  # no cls token
+        print(f"x_.shape: {x_.shape}")
         x_ = torch.gather(
             x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2])
         )  # unshuffle
+        print(f"x_.shape: {x_.shape}")
+        # TODO: remove this when not using cls token?
         x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
-
+        print(f"x.shape: {x.shape}")
+        
         # add pos embed
+        print(f"x + decoder_pos_embed: {x.shape} + {self.decoder_pos_embed.shape}")
         x = x + self.decoder_pos_embed
 
         # apply Transformer blocks

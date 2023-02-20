@@ -235,9 +235,25 @@ def main(args):
         depths=[8, 8], 
         sr_ratios=[4, 4],
         num_stages=2, 
-        num_conv=0)#,
-        # attention=args.attention
-    # )
+        num_conv=0)
+    
+    # model = models_mae.__dict__[args.model](
+    #     img_size=args.input_size,
+    #     patch_size=args.patch_size,
+    #     in_chans=dataset_train.in_c,
+    #     norm_pix_loss=args.norm_pix_loss,
+    #     # args after shunted changes
+    #     embed_dims=[64],
+    #     num_heads=[2],
+    #     mlp_ratios=[4], 
+    #     drop_rate=0.,
+    #     attn_drop_rate=0., 
+    #     drop_path_rate=0., 
+    #     depths=[8], 
+    #     sr_ratios=[4],
+    #     num_stages=1, 
+    #     num_conv=0)
+    
     model.to(device)
 
     model_without_ddp = model
