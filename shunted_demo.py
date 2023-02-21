@@ -107,7 +107,7 @@ def get_args_parser():
     # Dataset parameters
     parser.add_argument(
         "--train_path",
-        default="/data2/HDD_16TB/fmow-rgb-preproc/train_112.csv",
+        default="",
         type=str,
         help="Train .csv path",
     )
@@ -142,7 +142,7 @@ def get_args_parser():
 
     parser.add_argument(
         "--output_dir",
-        default="/data2/HDD_16TB/ICCV/Model_Saving/out_i64_p16_b64_e200_shunted_demo",
+        default="",
         help="path where to save, empty for no saving",
     )
     parser.add_argument(
@@ -186,15 +186,22 @@ def main(args):
     args.device="cuda:1"
     # args.attention="shunted"
     args.attention="scaled_dot_product"
+    root = '/mnt/com1822_HDD_16TB'
+    # root = '/data2/HDD_16TB'
     args.epochs=1
-    args.input_size=224
+    args.input_size=128
     args.patch_size=4
     args.batch_size=1
-    args.train_path=f"/data2/HDD_16TB/fmow-rgb-preproc/train_{args.input_size}.csv"
-    args.output_dir=f"/data2/HDD_16TB/ICCV/Model_Saving/out_i{args.input_size}_p{args.patch_size}_"\
+    # args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv"
+    args.train_path=f"{root}/ICCV/data_temp/train_{args.input_size}_com2044.csv"
+    args.output_dir=f"{root}/ICCV/Model_Saving/out_i{args.input_size}_p{args.patch_size}_"\
                     f"b{args.batch_size}_e{args.epochs}_{args.attention}_demo"
     args.model = "shunted_mae_vit_large_patch16"
     
+    
+    if args.output_dir:
+        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+        
     misc.init_distributed_mode(args)
 
     device = torch.device(args.device)
@@ -226,15 +233,15 @@ def main(args):
         in_chans=dataset_train.in_c,
         norm_pix_loss=args.norm_pix_loss,
         # args after shunted changes
-        embed_dims=[64, 64],
-        num_heads=[2, 2],
-        mlp_ratios=[4, 4], 
+        embed_dims=[64, 128, 256, 512],
+        num_heads=[2, 4, 8, 16],
+        mlp_ratios=[8, 8, 4, 4], 
         drop_rate=0.,
         attn_drop_rate=0., 
         drop_path_rate=0., 
-        depths=[8, 8], 
-        sr_ratios=[4, 4],
-        num_stages=2, 
+        depths=[1, 2, 4, 1], 
+        sr_ratios=[8, 4, 2, 1],
+        num_stages=4, 
         num_conv=0)
     
     # model = models_mae.__dict__[args.model](
@@ -336,6 +343,4 @@ def main(args):
 if __name__ == "__main__":
     args = get_args_parser()
     args = args.parse_args()
-    if args.output_dir:
-        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     main(args)

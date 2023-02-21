@@ -289,7 +289,9 @@ class MaskedAutoencoderViT(nn.Module):
         c: Num channels
         x: (N, L, patch_size**2 *C)
         """
+        print("**** Patchify +++")
         # p = self.patch_embed.patch_size[0]
+        print(f"imgs.shape: {imgs.shape}, p: {p}, c: {c}")
         assert imgs.shape[2] == imgs.shape[3] and imgs.shape[2] % p == 0
 
         # c = self.in_c
@@ -392,6 +394,7 @@ class MaskedAutoencoderViT(nn.Module):
 
             # embed patches
             # x  = self_patch_embed(x)
+            print(f"Expected patch_embed{i+1}.img_size: {self_patch_embed.img_size}")
             x, H, W = self_patch_embed(x)
             print(f"patch_embed{i + 1}.x.shape: {x.shape}")
             print(f"B, H, W: {B, H, W}")
@@ -493,15 +496,17 @@ class MaskedAutoencoderViT(nn.Module):
         # --- END replaced code --- #
 
         # --- START shunted equiv code --- #
+        print("###"*8, " Loss ", "###"*8)
+        print(f"mask.shape: {mask.shape}")
+        print(f"pred.shape: {pred.shape}")
         target = imgs
         print(f"imgs.shape: {imgs.shape}")
-        for i in range(self.num_stages):
-            print("++"*10)
-            print(f"Stage {i+1}:")
-            self_patch_embed = getattr(self, f"patch_embed{i + 1}")
-            target = self.patchify(
-                target, self_patch_embed.patch_size[0], self.in_c)
-            print(f"patchify{i + 1}.target.shape: {target.shape}")
+        # TODO: Is it correct to use the first patch embed only?
+        stage = 0
+        self_patch_embed = getattr(self, f"patch_embed{stage + 1}")
+        target = self.patchify(
+            target, self_patch_embed.patch_size[0], self.in_c)
+        print(f"patchify.target.shape: {target.shape}")
         if self.norm_pix_loss:
             mean = target.mean(dim=-1, keepdim=True)
             var = target.var(dim=-1, keepdim=True)
@@ -517,6 +522,7 @@ class MaskedAutoencoderViT(nn.Module):
         latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
         loss = self.forward_loss(imgs, pred, mask)
+        raise NotImplementedError("Should test different configs first.")
         return loss, pred, mask
 
 
