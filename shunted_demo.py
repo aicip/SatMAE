@@ -6,6 +6,8 @@ import time
 from pathlib import Path
 
 import models_mae
+import models_mae_original
+from shunted.shunted_timm import TestShuntedTransformer
 import numpy as np
 
 # assert timm.__version__ == "0.3.2"  # version check
@@ -190,7 +192,9 @@ def main(args):
     # root = '/data2/HDD_16TB'
     args.epochs=1
     args.input_size=128
-    args.patch_size=4
+    args.patch_size=8
+    patch_sizes=[2, 2, 2, 2]
+    strides=[2, 2, 2, 2]
     args.batch_size=1
     # args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv"
     args.train_path=f"{root}/ICCV/data_temp/train_{args.input_size}_com2044.csv"
@@ -222,6 +226,7 @@ def main(args):
         pin_memory=args.pin_mem,
         drop_last=True,
     )
+    is_masked = True
 
     # define the model
     # TODO: try:
@@ -229,20 +234,53 @@ def main(args):
     # - Different rations, depths, heads, etc.
     model = models_mae.__dict__[args.model](
         img_size=args.input_size,
-        patch_size=args.patch_size,
+        patch_sizes=patch_sizes,
+        strides=strides,
         in_chans=dataset_train.in_c,
         norm_pix_loss=args.norm_pix_loss,
         # args after shunted changes
-        embed_dims=[64, 128, 256, 512],
-        num_heads=[2, 4, 8, 16],
-        mlp_ratios=[8, 8, 4, 4], 
+        embed_dims=[64, 64, 64, 64],
+        num_heads=[2, 2, 2, 2],
+        mlp_ratios=[8, 8, 8, 8], 
         drop_rate=0.,
         attn_drop_rate=0., 
         drop_path_rate=0., 
-        depths=[1, 2, 4, 1], 
-        sr_ratios=[8, 4, 2, 1],
+        depths=[1, 1, 1, 1], 
+        sr_ratios=[2, 2, 2, 2],
         num_stages=4, 
-        num_conv=0)
+        num_conv=0,
+        # Decoder        
+        decoder_embed_dim=512,
+        decoder_depth=1,
+        decoder_num_heads=1)
+    # - Different rations, depths, heads, etc.
+    # model = models_mae_original.__dict__[args.model](
+    #     img_size=args.input_size,
+    #     patch_size=args.patch_size,
+    #     in_chans=dataset_train.in_c,
+    #     norm_pix_loss=args.norm_pix_loss,
+    #     # args after shunted changes
+    #     embed_dim=64,
+    #     num_heads=2,
+    #     mlp_ratio=8, 
+    #     depth=1)
+    
+    # model = TestShuntedTransformer(
+    #     img_size=args.input_size,
+    #     patch_size=args.patch_size,
+    #     in_chans=dataset_train.in_c,
+    #     # args after shunted changes
+    #     embed_dims=[64, 128, 256, 512],
+    #     num_heads=[2, 4, 8, 16],
+    #     mlp_ratios=[8, 8, 4, 4], 
+    #     drop_rate=0.,
+    #     attn_drop_rate=0., 
+    #     drop_path_rate=0., 
+    #     depths=[1, 2, 4, 1], 
+    #     sr_ratios=[2, 2, 2, 2],
+    #     num_stages=4, 
+    #     num_conv=0)
+    # is_masked = False
     
     # model = models_mae.__dict__[args.model](
     #     img_size=args.input_size,
@@ -311,6 +349,7 @@ def main(args):
             loss_scaler,
             log_writer=None,
             args=args,
+            is_masked=is_masked
         )
 
         if args.output_dir and (epoch % 5 == 0 or epoch + 1 == args.epochs):

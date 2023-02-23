@@ -746,6 +746,5 @@ def build_fmow_dataset(is_train: bool, args) -> SatelliteDataset:
         args.nb_classes = NAIP_CLASS_NUM
     else:
         raise ValueError(f"Invalid dataset type: {args.dataset_type}")
-    print(dataset)
 
     return dataset
