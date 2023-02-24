@@ -194,7 +194,7 @@ def main(args):
     patch_sizes = [2, 2, 2, 2]
     str_patch_sizes = '|'.join([str(i) for i in patch_sizes])
     args.batch_size = 1
-    args.print_level = 2
+    args.print_level = 3
     embed_dims=[64, 128, 256, 512]
     depths=[1, 2, 4, 1]
     num_heads=[2, 4, 8, 16]

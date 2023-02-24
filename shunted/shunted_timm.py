@@ -299,15 +299,25 @@ class OverlapPatchEmbed(nn.Module):
 
 
 class Head(nn.Module):
-    def __init__(self, num, patch_size=7, in_chans=3):
+    def __init__(self, 
+                 num, 
+                 patch_size=7, 
+                 stride=4,
+                 in_chans=3,
+                 embed_dim=768):
         super(Head, self).__init__()
         self.patch_size = to_2tuple(patch_size)
-        stem = [nn.Conv2d(3, 64, patch_size, 2, padding=3, bias=False),
+        stem = [nn.Conv2d(in_chans, 
+                          embed_dim, 
+                          kernel_size=self.patch_size, 
+                          stride=stride, 
+                          padding=(self.patch_size[0] // 2, self.patch_size[1] // 2), 
+                          bias=False),
                 nn.BatchNorm2d(64), nn.ReLU(True)]
-        for i in range(num):
-            stem.append(nn.Conv2d(64, 64, 3, 1, padding=1, bias=False))
-            stem.append(nn.BatchNorm2d(64))
-            stem.append(nn.ReLU(True))
+        # for _ in range(num):
+        #     stem.append(nn.Conv2d(64, 64, 3, 1, padding=1, bias=False))
+        #     stem.append(nn.BatchNorm2d(64))
+        #     stem.append(nn.ReLU(True))
         stem.append(nn.Conv2d(64, 64, kernel_size=2, stride=2))
         self.conv = nn.Sequential(*stem)
         self.norm = nn.LayerNorm(64)
@@ -348,4 +358,3 @@ class DWConv(nn.Module):
         x = x.flatten(2).transpose(1, 2)
 
         return x
-

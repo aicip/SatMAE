@@ -12,21 +12,22 @@ import torch
 import torch.nn as nn
 from timm.models.vision_transformer import PatchEmbed as TimmPatchEmbed, Block as TimmBlock
 from util.pos_embed import get_2d_sincos_pos_embed
-from shunted import Block as ShuntedBlock, PatchEmbed as ShuntedPatchEmbed, OverlapPatchEmbed
+from shunted import Block as ShuntedBlock, PatchEmbed as ShuntedPatchEmbed, Head as ShuntedHead, OverlapPatchEmbed
 
 # TODO
 # - [Χ] Integrate shunted multi-stage encoder into SatMAE
 # - [Χ] Integrate new model into `main_pretrain.py`
 # - [X] Create a function that generates the model name from iterable args
 # - [X] Compare and pick from the 3 available patch embedding methods
-# - [ ] Try using the ShuntedHead in the first stage (if possible)
+# - [X] Try using the ShuntedHead in the first stage (not working for now)
 # - [ ] Try using encoder `pos_embed`, and `cls_token` in the Encoder (if possible)
 # - [ ] Add config option to use `ShuntedHead`, `pos_embed`, and `cls_token`
 # - [ ] Try many different configurations to make sure shapes always match
-# - [ ] Train for a few epochs to make sure it learns and compare 
-# - [ ] Try creating an XFormer version using XFormer's `AttentionConfig, register_attention` 
+# - [ ] Train for a few epochs to make sure it learns and compare
+# - [ ] Try creating an XFormer version using XFormer's `AttentionConfig, register_attention`
 # - [ ] Try creating a multi-stage decoder
 # - [ ] Decide a few good model configurations and run the experiments
+
 
 class MaskedAutoencoderShuntedViT(nn.Module):
     """Masked Autoencoder with Shunted VisionTransformer backbone"""
@@ -54,7 +55,8 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                  num_conv=0,
                  mask_ratio=0.75,
                  print_level=0,
-                 use_overlap_patch_embed=False
+                 use_overlap_patch_embed=False,
+                 use_shunted_head=False
                  ):
         super().__init__()
         self.print_level = print_level
@@ -73,13 +75,15 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             print(f"sr_ratios: {sr_ratios}")
             print(f"num_conv: {num_conv}")
             print(f"mask_ratio: {mask_ratio}")
-            
+            print(f"use_overlap_patch_embed: {use_overlap_patch_embed}")
+            print(f"use_shunted_head: {use_shunted_head}")
+
             print("--"*8, "Init Encoder", "--"*8)
         self.in_c = in_chans
         self.depths = depths
         self.num_stages = num_stages
         self.mask_ratio = mask_ratio
-
+        self.use_shunted_head = use_shunted_head
         # --------------------------------------------------------------------------
         # MAE encoder specifics
 
@@ -87,57 +91,62 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                                                 sum(depths))]  # stochastic depth decay rule
         cur = 0
         next_embed_img_size = next_patch_H = next_patch_W = img_size
-        self.used_shunted_head = False # TODO: Remove after finished testing
         for i in range(num_stages):
-            # if i == 0 and False: # TODO: Decide if we want to use it
-            #     # This is essentially a linear+patch embedding layer. 
-            #     # https://github.com/OliverRensu/Shunted-Transformer/issues/13
-            #     patch_embed = ShuntedHead(num_conv, 
-            #                               patch_size=patch_sizes[i], 
-            #                               in_chans=in_chans)
-            #     self.used_shunted_head = True # TODO: Remove after finished testing
-            # else:
-            if use_overlap_patch_embed: # Doesn't work
-                patch_embed = OverlapPatchEmbed(img_size=next_embed_img_size,
-                                                patch_size=patch_sizes[i],
-                                                stride=patch_sizes[i],
-                                                in_chans=in_chans if i == 0 else embed_dims[i - 1],
-                                                embed_dim=embed_dims[i])
+            if i == 0 and self.use_shunted_head:
+                # This is essentially a linear+patch embedding layer accroding to the authors:
+                # https://github.com/OliverRensu/Shunted-Transformer/issues/13
+                patch_embed = ShuntedHead(num_conv,
+                                          patch_size=patch_sizes[i],
+                                          stride=patch_sizes[i],
+                                          in_chans=in_chans,
+                                          embed_dim=embed_dims[i])
             else:
-                patch_embed = ShuntedPatchEmbed(img_size=next_embed_img_size,
-                                                patch_size=patch_sizes[i],
-                                                in_chans=in_chans if i == 0 else embed_dims[i - 1],
-                                                embed_dim=embed_dims[i])
-           
+                if use_overlap_patch_embed:  # Doesn't work
+                    patch_embed = OverlapPatchEmbed(img_size=next_embed_img_size,
+                                                    patch_size=patch_sizes[i],
+                                                    stride=patch_sizes[i],
+                                                    in_chans=in_chans if i == 0 else embed_dims[i - 1],
+                                                    embed_dim=embed_dims[i])
+                else:
+                    patch_embed = ShuntedPatchEmbed(img_size=next_embed_img_size,
+                                                    patch_size=patch_sizes[i],
+                                                    in_chans=in_chans if i == 0 else embed_dims[i - 1],
+                                                    embed_dim=embed_dims[i])
+
             if self.print_level > 0:
-                print(f"++ Stage {i+1}")        
+                print(f"++ Stage {i+1}")
             # Find next patch embedding shape
-            dummy = torch.zeros(1, 
-                                in_chans if i == 0 else embed_dims[i - 1], 
-                                next_embed_img_size, 
+            dummy = torch.zeros(1,
+                                in_chans if i == 0 else embed_dims[i - 1],
+                                next_embed_img_size,
                                 next_embed_img_size)
             if self.print_level > 0:
                 print(f"\tPatch_embed.in.shape: {dummy.shape}")
-            _, next_patch_H, next_patch_W = patch_embed.forward(dummy)
+            patch_out, next_patch_H, next_patch_W = patch_embed.forward(dummy)
+            num_patches = patch_out.shape[1]
+            patch_embed.num_patches = num_patches
             assert next_patch_H == next_patch_W
             if self.print_level > 0:
-                print(f"\tNumber of patches: {patch_embed.num_patches}")
+                print(f"\tNumber of patches: {num_patches}")
                 print(f"\tPatch_embed(H, W): ({next_patch_H}, {next_patch_W})")
-                print(f"\tPatch_embed.out: (1, {patch_embed.num_patches}, {embed_dims[i]})")
+                print(
+                    f"\tPatch_embed.out: (1, {num_patches}, {embed_dims[i]})")
             next_embed_img_size = next_patch_H
             if i == 0:
-                # Size will be reduced due to the mask                
-                next_embed_img_size = (next_embed_img_size**2 * (1-self.mask_ratio))**0.5
+                # Size will be reduced due to the mask
+                next_embed_img_size = (
+                    next_embed_img_size**2 * (1-self.mask_ratio))**0.5
                 try:
                     assert int(next_embed_img_size) == next_embed_img_size
                 except Exception as e:
-                    print(f"\t\t(H * W * (1 - self.mask_ratio))**0.5 = {next_embed_img_size}")
+                    print(
+                        f"\t\t(H * W * (1 - self.mask_ratio))**0.5 = {next_embed_img_size}")
                     raise e
                 next_embed_img_size = int(next_embed_img_size)
             if self.print_level > 0:
                 print(f"\tApplied mask_ratio: {self.mask_ratio}")
                 print("\tNext Patch_embed.img_size: ", next_embed_img_size)
-            
+
             # Encoder Transformer Block
             blocks = nn.ModuleList([ShuntedBlock(dim=embed_dims[i],
                                                  num_heads=num_heads[i],
@@ -156,11 +165,12 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                 print(f"\t\tEmbed Dim: {embed_dims[i]}")
                 print(f"\t\tMLP Ratio: {mlp_ratios[i]}")
                 print(f"\t\tSR Ratio: {sr_ratios[i]}")
-                print(f"\t\tDrop Paths {[dpr[cur + j] for j in range(depths[i])]}")
+                print(
+                    f"\t\tDrop Paths {[dpr[cur + j] for j in range(depths[i])]}")
                 print(f"\t\tDrop Rate {drop_rate}")
             # Norm Layer
             norm = norm_layer(embed_dims[i])
-            cur += depths[i]            
+            cur += depths[i]
 
             setattr(self, f"patch_embed{i + 1}", patch_embed)
             setattr(self, f"blocks{i + 1}", blocks)
@@ -188,11 +198,11 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             print(f"mask_token.shape: {self.mask_token.shape}")
 
         self.decoder_pos_embed = nn.Parameter(torch.zeros(1,
-                                                          self.patch_embed1.num_patches+1, # +1: cls_token
+                                                          self.patch_embed1.num_patches+1,  # +1: cls_token
                                                           decoder_embed_dim),
                                               requires_grad=False
                                               )  # fixed sin-cos embedding
-        
+
         if self.print_level > 0:
             print(f"decoder_pos_embed.shape: {self.decoder_pos_embed.shape}")
         self.decoder_blocks = nn.ModuleList(
@@ -212,7 +222,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         self.decoder_norm = norm_layer(decoder_embed_dim)
         if self.print_level > 0:
             print(f"decoder_norm.shape: {self.decoder_norm.weight.shape}")
-        self.decoder_pred = nn.Linear(decoder_embed_dim, 
+        self.decoder_pred = nn.Linear(decoder_embed_dim,
                                       patch_sizes[-1]**2 * in_chans,
                                       bias=True)  # decoder to patch
         if self.print_level > 0:
@@ -247,9 +257,13 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         if self.print_level > 0:
             print(f"self.patch_embed{patch_ind + 1}")
             if self.print_level > 0:
-                print(f"\tshape={self_patch_embed.proj.weight.shape}")
+                if self.use_shunted_head:
+                    print(f"\tshape={self_patch_embed.conv[0].weight.shape}")
+                else:
+                    print(f"\tshape={self_patch_embed.proj.weight.shape}")
                 print(f"\tpatches={self_patch_embed.num_patches}")
-                print(f"\tsqrt(pathes)={int(self_patch_embed.num_patches**0.5)}")
+                print(
+                    f"\tsqrt(pathes)={int(self_patch_embed.num_patches**0.5)}")
         decoder_pos_embed = get_2d_sincos_pos_embed(
             self.decoder_pos_embed.shape[-1],
             # replaced with shunted equiv
@@ -257,8 +271,10 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             cls_token=True,
         )
         if self.print_level > 0:
-            print(f"decoder_pos_embed({self.decoder_pos_embed.shape[-1]}, {int(self_patch_embed.num_patches**0.5)}).shape: {decoder_pos_embed.shape}")
-            print(f"self.decoder_pos_embed.shape: {self.decoder_pos_embed.shape}")
+            print(
+                f"decoder_pos_embed({self.decoder_pos_embed.shape[-1]}, {int(self_patch_embed.num_patches**0.5)}).shape: {decoder_pos_embed.shape}")
+            print(
+                f"self.decoder_pos_embed.shape: {self.decoder_pos_embed.shape}")
         self.decoder_pos_embed.data.copy_(
             torch.from_numpy(decoder_pos_embed).float().unsqueeze(0)
         )
@@ -267,7 +283,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         for i in range(self.num_stages):
             # initialize patch_embed like nn.Linear (instead of nn.Conv2d)
             self_patch_embed = getattr(self, f"patch_embed{i + 1}")
-            if i == 0 and self.used_shunted_head: # TODO: Remove after finished testing
+            if i == 0 and self.use_shunted_head:
                 w = self_patch_embed.conv[0].weight.data
             else:
                 w = self_patch_embed.proj.weight.data
@@ -374,11 +390,11 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         return x_masked, mask, ids_restore
 
     def forward_encoder(self, x):
-        B = x.shape[0] # This should be 1
+        B = x.shape[0]  # This should be 1
         if self.print_level > 1:
             print("--"*8, " Encoder ", "--"*8)
             print(f"Original x.shape: {x.shape}")
-        for i in range(self.num_stages): # 4 stages
+        for i in range(self.num_stages):  # 4 stages
             if self.print_level > 1:
                 print("++", f"Stage {i+1}")
             self_patch_embed = getattr(self, f"patch_embed{i + 1}")
@@ -388,21 +404,24 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             self_norm = getattr(self, f"norm{i + 1}")
 
             # embed patches
-            if i != 0 or not self.used_shunted_head and self.print_level > 1:
-                print(f"\tExpected patch_embed{i+1}.img_size: {self_patch_embed.img_size}")
-            x, H, W = self_patch_embed(x) # x.shape: (1, patches, embed_dim)
+            if i != 0 or not self.use_shunted_head and self.print_level > 1:
+                print(
+                    f"\tExpected patch_embed{i+1}.img_size: {self_patch_embed.img_size}")
+            x, H, W = self_patch_embed(x)  # x.shape: (1, patches, embed_dim)
             if self.print_level > 1:
-                print(f"\tpatch_embed{i + 1}.x.shape: {x.shape}") # (1, 1024, 64), (1, 256, 128), (1, 64, 256), (1, 16, 512)
-                print(f"\t\tB, H, W: {B, H, W}") # B, H, W: (1, 32, 32), (1, 16, 16), (1, 8, 8), (1, 4, 4)
+                # (1, 1024, 64), (1, 256, 128), (1, 64, 256), (1, 16, 512)
+                print(f"\tpatch_embed{i + 1}.x.shape: {x.shape}")
+                # B, H, W: (1, 32, 32), (1, 16, 16), (1, 8, 8), (1, 4, 4)
+                print(f"\t\tB, H, W: {B, H, W}")
             assert H == W
-            
+
             # add pos embed w/o cls token
             # print(f"\tExpected pos_embed{i + 1}.shape: {self_pos_embed[:, 1:, :].shape}")
             # x = x + self_pos_embed[:, 1:, :]
             # print(f"\tpos_embed.x.shape: {x.shape}")
 
             # masking: length -> length * mask_ratio
-            if i==0:
+            if i == 0:
                 x, mask, ids_restore = self.random_masking(x)
                 if self.print_level > 1:
                     print(f"\trandom_masking{i + 1}.x.shape: {x.shape}")
@@ -416,7 +435,6 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                 if self.print_level > 1:
                     print(f"\t\tModified H, W: {H, W}")
 
-        
             # append cls token
             # cls_token = self_cls_token + self_pos_embed[:, :1, :]
             # cls_tokens = cls_token.expand(x.shape[0], -1, -1)
@@ -428,10 +446,12 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                 print("\t** Transformer blocks")
             for blk_ind, blk in enumerate(self_blocks):
                 if self.print_level > 1:
-                    print(f"\t\t{x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous().shape}")
+                    print(
+                        f"\t\t{x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous().shape}")
                 x = blk(x, H, W)
                 if self.print_level > 1:
-                    print(f"\t\tOutputs from block{i + 1}_{blk_ind}.x.shape: {x.shape}")
+                    print(
+                        f"\t\tOutputs from block{i + 1}_{blk_ind}.x.shape: {x.shape}")
 
             # apply normalization
             x = self_norm(x)
@@ -456,7 +476,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
 
         # append mask tokens to sequence
         mask_tokens = self.mask_token.repeat(
-            x.shape[0], 
+            x.shape[0],
             ids_restore.shape[1] + 1 - x.shape[1], 1
         )
         if self.print_level > 2:
@@ -469,14 +489,15 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         )  # unshuffle
         if self.print_level > 2:
             print(f"x_.gather(ids_restore).shape: {x_.shape}")
-        
+
         x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
         if self.print_level > 1:
             print(f"x.cat(x_).shape: {x.shape}")
-        
+
         # add pos embed
         if self.print_level > 1:
-            print(f"x + decoder_pos_embed: {x.shape} + {self.decoder_pos_embed.shape}")
+            print(
+                f"x + decoder_pos_embed: {x.shape} + {self.decoder_pos_embed.shape}")
         x = x + self.decoder_pos_embed
         if self.print_level > 1:
             print(f"decoder_pos_embed+x.shape: {x.shape}")
@@ -516,18 +537,18 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         target = imgs
         if self.print_level > 1:
             print(f"In imgs.shape: {imgs.shape}")
-        
+
         stage = self.num_stages - 1
         self_patch_embed = getattr(self, f"patch_embed{stage + 1}")
-        target = self.patchify(
-            target, self_patch_embed.patch_size[0], self.in_c)
+        patch_size = self_patch_embed.patch_size[0]
+        target = self.patchify(target, patch_size, self.in_c)
         if self.print_level > 1:
             print(f"patchify.target.shape: {target.shape}")
         if self.norm_pix_loss:
             mean = target.mean(dim=-1, keepdim=True)
             var = target.var(dim=-1, keepdim=True)
             target = (target - mean) / (var + 1.0e-6) ** 0.5
-            
+
         if self.print_level > 1:
             print(f"(pred-target).shape: ({pred.shape}-{target.shape})")
         loss = (pred - target) ** 2
@@ -569,7 +590,8 @@ class MaskedAutoencoderViT(nn.Module):
 
         # --------------------------------------------------------------------------
         # MAE encoder specifics
-        self.patch_embed = TimmPatchEmbed(img_size, patch_size, in_chans, embed_dim)
+        self.patch_embed = TimmPatchEmbed(
+            img_size, patch_size, in_chans, embed_dim)
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
@@ -639,7 +661,8 @@ class MaskedAutoencoderViT(nn.Module):
             int(self.patch_embed.num_patches**0.5),
             cls_token=True,
         )
-        self.pos_embed.data.copy_(torch.from_numpy(pos_embed).float().unsqueeze(0))
+        self.pos_embed.data.copy_(
+            torch.from_numpy(pos_embed).float().unsqueeze(0))
 
         decoder_pos_embed = get_2d_sincos_pos_embed(
             self.decoder_pos_embed.shape[-1],
@@ -724,7 +747,8 @@ class MaskedAutoencoderViT(nn.Module):
 
         # keep the first subset
         ids_keep = ids_shuffle[:, :len_keep]
-        x_masked = torch.gather(x, dim=1, index=ids_keep.unsqueeze(-1).repeat(1, 1, D))
+        x_masked = torch.gather(
+            x, dim=1, index=ids_keep.unsqueeze(-1).repeat(1, 1, D))
 
         # generate the binary mask: 0 is keep, 1 is remove
         mask = torch.ones([N, L], device=x.device)
@@ -815,7 +839,6 @@ class MaskedAutoencoderViT(nn.Module):
         return loss, pred, mask
 
 
-
 def mae_vit_base_patch16_dec512d8b(**kwargs):
     model = MaskedAutoencoderViT(
         embed_dim=768,
@@ -861,13 +884,15 @@ def mae_vit_huge_patch14_dec512d8b(**kwargs):
     return model
 
 # Shunted Transformer
+
+
 def shunted_mae_vit_large_patch16_dec512d8b(**kwargs):
     model = MaskedAutoencoderShuntedViT(
         # Encoder
         num_stages=4,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        attn_drop_rate=0., 
-        drop_path_rate=0., 
+        attn_drop_rate=0.,
+        drop_path_rate=0.,
         drop_rate=0.,
         num_conv=0,
         # Decoder
@@ -878,7 +903,7 @@ def shunted_mae_vit_large_patch16_dec512d8b(**kwargs):
     )
     return model
 
-        
+
 # --- set recommended archs --- #
 
 # SatMAE Only
