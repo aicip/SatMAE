@@ -226,7 +226,6 @@ def main(args):
         pin_memory=args.pin_mem,
         drop_last=True,
     )
-    is_masked = True
 
     # define the model
     # TODO: try:
@@ -280,7 +279,6 @@ def main(args):
     #     sr_ratios=[2, 2, 2, 2],
     #     num_stages=4, 
     #     num_conv=0)
-    # is_masked = False
     
     # model = models_mae.__dict__[args.model](
     #     img_size=args.input_size,
@@ -348,8 +346,7 @@ def main(args):
             epoch,
             loss_scaler,
             log_writer=None,
-            args=args,
-            is_masked=is_masked
+            args=args
         )
 
         if args.output_dir and (epoch % 5 == 0 or epoch + 1 == args.epochs):
@@ -380,6 +377,5 @@ def main(args):
 
 
 if __name__ == "__main__":
-    args = get_args_parser()
-    args = args.parse_args()
+    args = get_args_parser().parse_args()
     main(args)

@@ -168,10 +168,11 @@ class MaskedAutoencoderViT(nn.Module):
         print(f"mask_token.shape: {self.mask_token.shape}")
 
         self.decoder_pos_embed = nn.Parameter(torch.zeros(1,
-                                                          patch_embed.num_patches+1, # +1: cls_token
+                                                          self.patch_embed1.num_patches+1, # +1: cls_token
                                                           decoder_embed_dim),
                                               requires_grad=False
                                               )  # fixed sin-cos embedding
+        print(1, self.patch_embed1.num_patches+1,decoder_embed_dim)
         print(f"decoder_pos_embed.shape: {self.decoder_pos_embed.shape}")
         self.decoder_blocks = nn.ModuleList(
             [
@@ -216,8 +217,8 @@ class MaskedAutoencoderViT(nn.Module):
         #     setattr(getattr(self, f"pos_embed{i + 1}"), "data", torch.from_numpy(pos_embed).float().unsqueeze(0))
 
         # Intialize Decoder pos and patch embed
-        patch_ind = self.num_stages - 1
-        # patch_ind = 0
+        # patch_ind = self.num_stages - 1
+        patch_ind = 0
         self_patch_embed = getattr(self, f"patch_embed{patch_ind + 1}")
         print(f"self.patch_embed{patch_ind + 1}")
         print(f"\tshape={self_patch_embed.proj.weight.shape}")
@@ -403,9 +404,9 @@ class MaskedAutoencoderViT(nn.Module):
         return x, mask, ids_restore
 
     def forward_decoder(self, x, ids_restore):
-        print(f"Original x.shape: {x.shape}")
-        print(f"ids_restore.shape: {ids_restore.shape}")
         print("--"*8, " Decoder ", "--"*8)
+        print(f"In x.shape: {x.shape}")
+        print(f"In ids_restore.shape: {ids_restore.shape}")
         # embed tokens
         x = self.decoder_embed(x)
         print(f"decoder_embed.x.shape: {x.shape}")
@@ -422,20 +423,18 @@ class MaskedAutoencoderViT(nn.Module):
             x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2])
         )  # unshuffle
         print(f"x_.gather(ids_restore).shape: {x_.shape}")
-        # TODO: remove this when not using cls token?
+        
         x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
         print(f"x.cat(x_).shape: {x.shape}")
         
         # add pos embed
-        # print(f"x + decoder_pos_embed: {x.shape} + {self.decoder_pos_embed.shape}")
-        # x = x + self.decoder_pos_embed
-        # print(f"decoder_pos_embed+x.shape: {x.shape}")
+        print(f"x + decoder_pos_embed: {x.shape} + {self.decoder_pos_embed.shape}")
+        x = x + self.decoder_pos_embed
+        print(f"decoder_pos_embed+x.shape: {x.shape}")
 
         # apply Transformer blocks
         print("** Transformer blocks")
         for blk_ind, blk in enumerate(self.decoder_blocks):
-            # print(f"Block_{blk_ind}: (x.shape): -> In {x.shape})")
-            # print(f"    Patch Embed img_size: {self.patch_embed.img_size}")
             x = blk(x)
             print(f"\tOutputs from block_{blk_ind}: (x.shape): {x.shape})")
         x = self.decoder_norm(x)
@@ -457,10 +456,10 @@ class MaskedAutoencoderViT(nn.Module):
         mask: [N, L], 0 is keep, 1 is remove,
         """
         print("--"*8, " Loss ", "--"*8)
-        print(f"mask.shape: {mask.shape}")
-        print(f"pred.shape: {pred.shape}")
+        print(f"In mask.shape: {mask.shape}")
+        print(f"In pred.shape: {pred.shape}")
         target = imgs
-        print(f"imgs.shape: {imgs.shape}")
+        print(f"In imgs.shape: {imgs.shape}")
         # TODO: Is it correct to use the first patch embed only?
         stage = self.num_stages - 1
         self_patch_embed = getattr(self, f"patch_embed{stage + 1}")
@@ -483,7 +482,6 @@ class MaskedAutoencoderViT(nn.Module):
         latent, mask, ids_restore = self.forward_encoder(imgs)
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
         loss = self.forward_loss(imgs, pred, mask)
-        raise NotImplementedError("Should test different configs first.")
         return loss, pred, mask
 
 
