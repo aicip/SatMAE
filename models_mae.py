@@ -18,7 +18,7 @@ from shunted import Block as ShuntedBlock, PatchEmbed as ShuntedPatchEmbed, Over
 # - [Χ] Integrate shunted multi-stage encoder into SatMAE
 # - [Χ] Integrate new model into `main_pretrain.py`
 # - [X] Create a function that generates the model name from iterable args
-# - [ ] Compare and pick from the 3 available patch embedding methods
+# - [X] Compare and pick from the 3 available patch embedding methods
 # - [ ] Try using the ShuntedHead in the first stage (if possible)
 # - [ ] Try using encoder `pos_embed`, and `cls_token` in the Encoder (if possible)
 # - [ ] Add config option to use `ShuntedHead`, `pos_embed`, and `cls_token`
@@ -53,7 +53,8 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                  num_stages=4,
                  num_conv=0,
                  mask_ratio=0.75,
-                 print_level=0
+                 print_level=0,
+                 use_overlap_patch_embed=False
                  ):
         super().__init__()
         self.print_level = print_level
@@ -96,15 +97,18 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             #                               in_chans=in_chans)
             #     self.used_shunted_head = True # TODO: Remove after finished testing
             # else:
-            patch_embed = ShuntedPatchEmbed(img_size=next_embed_img_size,
-                                            patch_size=patch_sizes[i],
-                                            in_chans=in_chans if i == 0 else embed_dims[i - 1],
-                                            embed_dim=embed_dims[i])
-            # patch_embed = OverlapPatchEmbed(img_size=next_embed_img_size,
-            #                                 patch_size=patch_sizes[i],
-            #                                 stride=patch_sizes[i],
-            #                                 in_chans=in_chans if i == 0 else embed_dims[i - 1],
-            #                                 embed_dim=embed_dims[i])
+            if use_overlap_patch_embed: # Doesn't work
+                patch_embed = OverlapPatchEmbed(img_size=next_embed_img_size,
+                                                patch_size=patch_sizes[i],
+                                                stride=patch_sizes[i],
+                                                in_chans=in_chans if i == 0 else embed_dims[i - 1],
+                                                embed_dim=embed_dims[i])
+            else:
+                patch_embed = ShuntedPatchEmbed(img_size=next_embed_img_size,
+                                                patch_size=patch_sizes[i],
+                                                in_chans=in_chans if i == 0 else embed_dims[i - 1],
+                                                embed_dim=embed_dims[i])
+           
             if self.print_level > 0:
                 print(f"++ Stage {i+1}")        
             # Find next patch embedding shape
@@ -537,7 +541,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
         loss = self.forward_loss(imgs, pred, mask)
         if self.print_level > 1:
-            raise Exception("print_level > 0: stopping after first forward pass")
+            raise Exception("Stopping because you set the print_level > 1.")
         return loss, pred, mask
 
 

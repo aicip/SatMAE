@@ -192,7 +192,7 @@ def main(args):
     args.epochs = 1
     args.input_size = 128
     patch_sizes = [2, 2, 2, 2]
-    str_patch_sizes = '-'.join([str(i) for i in patch_sizes])
+    str_patch_sizes = '|'.join([str(i) for i in patch_sizes])
     args.batch_size = 1
     args.print_level = 2
     embed_dims=[64, 128, 256, 512]
