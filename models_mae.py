@@ -22,17 +22,13 @@ class MaskedAutoencoderViT(nn.Module):
     """Masked Autoencoder with VisionTransformer backbone"""
 
     def __init__(self,
+                 # MAE arguments
                  img_size=224,
                  patch_sizes=[16, 16, 16, 16],
-                 strides=[4, 2, 2, 2],
                  in_chans=3,
-                 # embed_dim=1024, # replaced
-                 # depth=24, # replaced
-                 # num_heads=16, # replaced
                  decoder_embed_dim=512,
-                 decoder_depth=8,  # replaced
+                 decoder_depth=8,
                  decoder_num_heads=16,
-                 # mlp_ratio=4.0, # replaced
                  norm_layer=nn.LayerNorm,
                  norm_pix_loss=False,
                  # shunted arguments
@@ -52,7 +48,6 @@ class MaskedAutoencoderViT(nn.Module):
         print("--"*8, "Config", "--"*8)
         print(f"img_size: {img_size}")
         print(f"patch_sizes: {patch_sizes}")
-        print(f"strides: {strides}")
         print(f"in_chans: {in_chans}")
         print(f"embed_dims: {embed_dims}")
         print(f"num_heads: {num_heads}")
@@ -80,23 +75,23 @@ class MaskedAutoencoderViT(nn.Module):
         next_embed_img_size = next_patch_H = next_patch_W = img_size
         self.used_shunted_head = False # TODO: Remove after finished testing
         for i in range(num_stages):
-            if i == 0 and False: # TODO: Decide if we want to use it
-                # This is essentially a linear+patch embedding layer. 
-                # https://github.com/OliverRensu/Shunted-Transformer/issues/13
-                patch_embed = ShuntedHead(num_conv, 
-                                          patch_size=patch_sizes[i], 
-                                          in_chans=in_chans)
-                self.used_shunted_head = True # TODO: Remove after finished testing
-            else:  # TODO: Decide classic or overlap patch embedding and args
-                patch_embed = DefaultPatchEmbed(img_size=next_embed_img_size,
-                                                patch_size=patch_sizes[i],
-                                                in_chans=in_chans if i == 0 else embed_dims[i - 1],
-                                                embed_dim=embed_dims[i])
-                # patch_embed = OverlapPatchEmbed(img_size=next_embed_img_size,
-                #                                 patch_size=patch_sizes[i],
-                #                                 stride=patch_sizes[i],
-                #                                 in_chans=in_chans if i == 0 else embed_dims[i - 1],
-                #                                 embed_dim=embed_dims[i])
+            # if i == 0 and False: # TODO: Decide if we want to use it
+            #     # This is essentially a linear+patch embedding layer. 
+            #     # https://github.com/OliverRensu/Shunted-Transformer/issues/13
+            #     patch_embed = ShuntedHead(num_conv, 
+            #                               patch_size=patch_sizes[i], 
+            #                               in_chans=in_chans)
+            #     self.used_shunted_head = True # TODO: Remove after finished testing
+            # else:  # TODO: Decide classic or overlap patch embedding
+            patch_embed = DefaultPatchEmbed(img_size=next_embed_img_size,
+                                            patch_size=patch_sizes[i],
+                                            in_chans=in_chans if i == 0 else embed_dims[i - 1],
+                                            embed_dim=embed_dims[i])
+            # patch_embed = OverlapPatchEmbed(img_size=next_embed_img_size,
+            #                                 patch_size=patch_sizes[i],
+            #                                 stride=patch_sizes[i],
+            #                                 in_chans=in_chans if i == 0 else embed_dims[i - 1],
+            #                                 embed_dim=embed_dims[i])
             print(f"++ Stage {i+1}")        
             # Find next patch embedding shape
             dummy = torch.zeros(1, 
@@ -191,7 +186,7 @@ class MaskedAutoencoderViT(nn.Module):
         self.decoder_norm = norm_layer(decoder_embed_dim)
         print(f"decoder_norm.shape: {self.decoder_norm.weight.shape}")
         self.decoder_pred = nn.Linear(decoder_embed_dim, 
-                                      patch_sizes[-1]**2 * in_chans, # TODO: make sure this is correct
+                                      patch_sizes[-1]**2 * in_chans,
                                       bias=True)  # decoder to patch
         print(f"decoder_pred.shape: {self.decoder_pred.weight.shape}")
         # --------------------------------------------------------------------------
@@ -228,7 +223,7 @@ class MaskedAutoencoderViT(nn.Module):
             self.decoder_pos_embed.shape[-1],
             # replaced with shunted equiv
             int(self_patch_embed.num_patches**0.5),
-            cls_token=True, # TODO: check if this is correct
+            cls_token=True,
         )
         print(f"decoder_pos_embed({self.decoder_pos_embed.shape[-1]}, {int(self_patch_embed.num_patches**0.5)}).shape: {decoder_pos_embed.shape}")
         print(f"self.decoder_pos_embed.shape: {self.decoder_pos_embed.shape}")
@@ -460,7 +455,7 @@ class MaskedAutoencoderViT(nn.Module):
         print(f"In pred.shape: {pred.shape}")
         target = imgs
         print(f"In imgs.shape: {imgs.shape}")
-        # TODO: Is it correct to use the first patch embed only?
+        
         stage = self.num_stages - 1
         self_patch_embed = getattr(self, f"patch_embed{stage + 1}")
         target = self.patchify(

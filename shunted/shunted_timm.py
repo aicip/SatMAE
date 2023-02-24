@@ -8,285 +8,19 @@ from timm.models.vision_transformer import _cfg
 import math
 
 
-class TestShuntedTransformer(nn.Module):
-    def __init__(self, 
-                 img_size=224, 
-                 patch_size=16, 
-                 in_chans=3, 
-                #  num_classes=1000, 
-                 embed_dims=[64, 128, 256, 512],
-                 num_heads=[1, 2, 4, 8], 
-                 mlp_ratios=[4, 4, 4, 4], 
-                 qkv_bias=False, 
-                 qk_scale=None, 
-                 drop_rate=0.,
-                 attn_drop_rate=0., 
-                 drop_path_rate=0., 
-                 norm_layer=nn.LayerNorm,
-                 depths=[3, 4, 6, 3], 
-                 sr_ratios=[8, 4, 2, 1], 
-                 num_stages=4, 
-                 num_conv=0
-                 ):
-        super().__init__()
-        print(f"img_size: {img_size}")
-        print(f"patch_size: {patch_size}")
-        print(f"in_chans: {in_chans}")
-        print(f"embed_dims: {embed_dims}")
-        print(f"num_heads: {num_heads}")
-        print(f"mlp_ratios: {mlp_ratios}")
-        print(f"depths: {depths}")
-        print(f"sr_ratios: {sr_ratios}")
-        print(f"num_conv: {num_conv}")
-        print("--"*8, "Init", "--"*8)
-        
-        # self.num_classes = num_classes
-        self.depths = depths
-        self.num_stages = num_stages
-
-        dpr = [x.item() for x in torch.linspace(0, drop_path_rate,
-                                                sum(depths))]  # stochastic depth decay rule
-        cur = 0
-
-        for i in range(num_stages):
-            if i == 0 and False:
-                # patch_embed = Head(num_conv)
-                continue
-            else:
-                patch_embed = OverlapPatchEmbed(img_size=img_size if i == 0 else img_size // (2 ** (i + 1)),
-                                                patch_size=7 if i == 0 else 3,
-                                                stride=4 if i == 0 else 2,
-                                                in_chans=in_chans if i == 0 else embed_dims[i - 1],
-                                                embed_dim=embed_dims[i])
-                print(f"patche embed img_size: {patch_embed.img_size}")
-                num_patches_curr = patch_embed.num_patches
-                print(f"num_patches: {num_patches_curr}")
-
-            block = nn.ModuleList([Block(dim=embed_dims[i], 
-                                         num_heads=num_heads[i], 
-                                         mlp_ratio=mlp_ratios[i], 
-                                         qkv_bias=qkv_bias, 
-                                         qk_scale=qk_scale,
-                                         drop=drop_rate, 
-                                         attn_drop=attn_drop_rate, 
-                                         drop_path=dpr[cur + j], 
-                                         norm_layer=norm_layer,
-                                         sr_ratio=sr_ratios[i])
-                                    for j in range(depths[i])])
-            norm = norm_layer(embed_dims[i])
-            cur += depths[i]
-
-            setattr(self, f"patch_embed{i + 1}", patch_embed)
-            setattr(self, f"block{i + 1}", block)
-            setattr(self, f"norm{i + 1}", norm)
-
-        # classification head
-        # self.head = nn.Linear(
-        #     embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
-
-        self.apply(self._init_weights)
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
-        elif isinstance(m, nn.Conv2d):
-            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-            fan_out //= m.groups
-            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
-            if m.bias is not None:
-                m.bias.data.zero_()
-
-    def freeze_patch_emb(self):
-        self.patch_embed1.requires_grad = False
-
-    @torch.jit.ignore
-    def no_weight_decay(self):
-        # has pos_embed may be better
-        return {'pos_embed1', 'pos_embed2', 'pos_embed3', 'pos_embed4', 'cls_token'}
-
-    def get_classifier(self):
-        return self.head
-
-    def reset_classifier(self, num_classes, global_pool=''):
-        self.num_classes = num_classes
-        self.head = nn.Linear(
-            self.embed_dim, num_classes) if num_classes > 0 else nn.Identity()
-
-    def forward_features(self, x):
-        B = x.shape[0]
-        print("---"*8, "forward_encoder", "---"*8)
-        print(f"Original x.shape: {x.shape}")
-
-        for i in range(self.num_stages):
-            print("++"*10)
-            print(f"Stage {i+1}:")
-            patch_embed = getattr(self, f"patch_embed{i + 1}")
-            block = getattr(self, f"block{i + 1}")
-            norm = getattr(self, f"norm{i + 1}")
-            print(f"\tExpected patch_embed{i+1}.img_size: {patch_embed.img_size}")
-            x, H, W = patch_embed(x)
-            print(f"\tpatch_embed{i + 1}.x.shape: {x.shape}")
-            print(f"\t\tB, H, W: {B, H, W}")
-            
-            print("###", "Transformer blocks", "###")
-            for blk_ind, blk in enumerate(block):
-                # print(f"\t\tInputs to block{i + 1}_{blk_ind}: (x.shape, H, W): {x.shape, H, W})")
-                # print(f"\t\t\tPatch Embed img_size: {patch_embed.img_size}")
-                x = blk(x, H, W)
-                print(f"\t\tOutputs from block{i + 1}_{blk_ind}.x.shape: {x.shape}")
-            x = norm(x)
-            print(f"\tnorm{i + 1}.x.shape: {x.shape}")
-            if i != self.num_stages - 1:
-                x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
-            print(f"\tOutput x.shape: {x.shape}")
-
-        return x.mean(dim=1)
-
-    def forward(self, x):
-        x = self.forward_features(x)
-        # x = self.head(x)
-        raise NotImplementedError("Should test different configs first.")
-
-        return x
-
-
-
-class ShuntedTransformer(nn.Module):
-    def __init__(self, 
-                 img_size=224, 
-                 patch_size=16, 
-                 in_chans=3, 
-                 num_classes=1000, 
-                 embed_dims=[64, 128, 256, 512],
-                 num_heads=[1, 2, 4, 8], 
-                 mlp_ratios=[4, 4, 4, 4], 
-                 qkv_bias=False, 
-                 qk_scale=None, 
-                 drop_rate=0.,
-                 attn_drop_rate=0., 
-                 drop_path_rate=0., 
-                 norm_layer=nn.LayerNorm,
-                 depths=[3, 4, 6, 3], 
-                 sr_ratios=[8, 4, 2, 1], 
-                 num_stages=4, 
-                 num_conv=0
-                 ):
-        super().__init__()
-        
-        self.num_classes = num_classes
-        self.depths = depths
-        self.num_stages = num_stages
-
-        dpr = [x.item() for x in torch.linspace(0, drop_path_rate,
-                                                sum(depths))]  # stochastic depth decay rule
-        cur = 0
-
-        for i in range(num_stages):
-            if i == 0:
-                patch_embed = Head(num_conv)
-            else:
-                patch_embed = OverlapPatchEmbed(img_size=img_size if i == 0 else img_size // (2 ** (i + 1)),
-                                                patch_size=7 if i == 0 else 3,
-                                                stride=4 if i == 0 else 2,
-                                                in_chans=in_chans if i == 0 else embed_dims[i - 1],
-                                                embed_dim=embed_dims[i])
-
-            block = nn.ModuleList([Block(dim=embed_dims[i], 
-                                         num_heads=num_heads[i], 
-                                         mlp_ratio=mlp_ratios[i], 
-                                         qkv_bias=qkv_bias, 
-                                         qk_scale=qk_scale,
-                                         drop=drop_rate, 
-                                         attn_drop=attn_drop_rate, 
-                                         drop_path=dpr[cur + j], 
-                                         norm_layer=norm_layer,
-                                         sr_ratio=sr_ratios[i])
-                                    for j in range(depths[i])])
-            norm = norm_layer(embed_dims[i])
-            cur += depths[i]
-
-            setattr(self, f"patch_embed{i + 1}", patch_embed)
-            setattr(self, f"block{i + 1}", block)
-            setattr(self, f"norm{i + 1}", norm)
-
-        # classification head
-        self.head = nn.Linear(
-            embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
-
-        self.apply(self._init_weights)
-
-    def _init_weights(self, m):
-        if isinstance(m, nn.Linear):
-            trunc_normal_(m.weight, std=.02)
-            if isinstance(m, nn.Linear) and m.bias is not None:
-                nn.init.constant_(m.bias, 0)
-        elif isinstance(m, nn.LayerNorm):
-            nn.init.constant_(m.bias, 0)
-            nn.init.constant_(m.weight, 1.0)
-        elif isinstance(m, nn.Conv2d):
-            fan_out = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-            fan_out //= m.groups
-            m.weight.data.normal_(0, math.sqrt(2.0 / fan_out))
-            if m.bias is not None:
-                m.bias.data.zero_()
-
-    def freeze_patch_emb(self):
-        self.patch_embed1.requires_grad = False
-
-    @torch.jit.ignore
-    def no_weight_decay(self):
-        # has pos_embed may be better
-        return {'pos_embed1', 'pos_embed2', 'pos_embed3', 'pos_embed4', 'cls_token'}
-
-    def get_classifier(self):
-        return self.head
-
-    def reset_classifier(self, num_classes, global_pool=''):
-        self.num_classes = num_classes
-        self.head = nn.Linear(
-            self.embed_dim, num_classes) if num_classes > 0 else nn.Identity()
-
-    def forward_features(self, x):
-        B = x.shape[0]
-
-        for i in range(self.num_stages):
-            patch_embed = getattr(self, f"patch_embed{i + 1}")
-            block = getattr(self, f"block{i + 1}")
-            norm = getattr(self, f"norm{i + 1}")
-            x, H, W = patch_embed(x)
-            for blk in block:
-                x = blk(x, H, W)
-            x = norm(x)
-            if i != self.num_stages - 1:
-                x = x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous()
-
-        return x.mean(dim=1)
-
-    def forward(self, x):
-        x = self.forward_features(x)
-        x = self.head(x)
-
-        return x
-
-
 class Block(nn.Module):
 
-    def __init__(self, 
-                 dim, 
-                 num_heads, 
-                 mlp_ratio=4., 
-                 qkv_bias=False, 
-                 qk_scale=None, 
-                 drop=0., 
+    def __init__(self,
+                 dim,
+                 num_heads,
+                 mlp_ratio=4.,
+                 qkv_bias=False,
+                 qk_scale=None,
+                 drop=0.,
                  attn_drop=0.,
-                 drop_path=0., 
-                 act_layer=nn.GELU, 
-                 norm_layer=nn.LayerNorm, 
+                 drop_path=0.,
+                 act_layer=nn.GELU,
+                 norm_layer=nn.LayerNorm,
                  sr_ratio=1
                  ):
         super().__init__()
@@ -389,10 +123,7 @@ class Attention(nn.Module):
                 m.bias.data.zero_()
 
     def forward(self, x, H, W):
-        print("\t\t## Attention") # TODO: remove
         B, N, C = x.shape
-        print(f"\t\t\tB: {B}, N: {N}, C: {C}")
-        print(f"\t\t\tH: {H}, W: {W}")
         q = self.q(x).reshape(B, N, self.num_heads, C //
                               self.num_heads).permute(0, 2, 1, 3)
         if self.sr_ratio > 1:
@@ -484,8 +215,8 @@ class OverlapPatchEmbed(nn.Module):
     """ Image to Patch Embedding
     """
 
-    def __init__(self, 
-                 img_size=224, patch_size=7, stride=4, 
+    def __init__(self,
+                 img_size=224, patch_size=7, stride=4,
                  in_chans=3, embed_dim=768):
         super().__init__()
         img_size = to_2tuple(img_size)
@@ -495,7 +226,7 @@ class OverlapPatchEmbed(nn.Module):
         self.patch_size = patch_size
         self.H, self.W = img_size[0] // patch_size[0], img_size[1] // patch_size[1]
         self.num_patches = self.H * self.W
-        self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size, 
+        self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size,
                               stride=stride,
                               padding=(patch_size[0] // 2, patch_size[1] // 2))
         self.norm = nn.LayerNorm(embed_dim)
@@ -577,45 +308,3 @@ class DWConv(nn.Module):
 
         return x
 
-
-def _conv_filter(state_dict, patch_size=16):
-    """ convert patch embedding weight from manual patchify + linear proj to conv"""
-    out_dict = {}
-    for k, v in state_dict.items():
-        if 'patch_embed.proj.weight' in k:
-            v = v.reshape((v.shape[0], 3, patch_size, patch_size))
-        out_dict[k] = v
-
-    return out_dict
-
-
-@register_model
-def shunted_t(pretrained=False, **kwargs):
-    model = ShuntedTransformer(
-        patch_size=4, embed_dims=[64, 128, 256, 512], num_heads=[2, 4, 8, 16], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[1, 2, 4, 1], sr_ratios=[8, 4, 2, 1], num_conv=0,
-        **kwargs)
-    model.default_cfg = _cfg()
-
-    return model
-
-
-@register_model
-def shunted_s(pretrained=False, **kwargs):
-    model = ShuntedTransformer(
-        patch_size=4, embed_dims=[64, 128, 256, 512], num_heads=[2, 4, 8, 16], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 4, 12, 1], sr_ratios=[8, 4, 2, 1], num_conv=1, **kwargs)
-    model.default_cfg = _cfg()
-
-    return model
-
-
-@register_model
-def shunted_b(pretrained=False, **kwargs):
-    model = ShuntedTransformer(
-        patch_size=4, embed_dims=[64, 128, 256, 512], num_heads=[2, 4, 8, 16], mlp_ratios=[8, 8, 4, 4], qkv_bias=True,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 24, 2], sr_ratios=[8, 4, 2, 1], num_conv=2,
-        **kwargs)
-    model.default_cfg = _cfg()
-
-    return model

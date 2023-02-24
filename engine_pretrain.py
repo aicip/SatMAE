@@ -39,8 +39,8 @@ def train_one_epoch(
         metric_logger.log_every(data_loader, print_freq, header)
     ):
         i += 1
-        if i >5:
-            break
+        if i > 3:
+            raise Exception("Test finished")  # TODO: remove this line
 
         # we use a per iteration (instead of per epoch) lr scheduler
         if data_iter_step % accum_iter == 0:
