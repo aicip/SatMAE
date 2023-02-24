@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
-from functools import partial
+from torch import _assert
+import collections.abc
+from itertools import repeat
 
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
-from timm.models.registry import register_model
-from timm.models.vision_transformer import _cfg
 import math
 
 
@@ -211,6 +211,49 @@ class Mlp(nn.Module):
         return x
 
 
+class PatchEmbed(nn.Module):
+    """ 2D Image to Patch Embedding
+    """
+
+    def __init__(
+            self,
+            img_size=224,
+            patch_size=16,
+            in_chans=3,
+            embed_dim=768,
+            norm_layer=None,
+            flatten=True,
+            bias=True,
+    ):
+        super().__init__()
+
+        img_size = to_2tuple(img_size)
+        patch_size = to_2tuple(patch_size)
+        self.img_size = img_size
+        self.patch_size = patch_size
+        self.grid_size = (img_size[0] // patch_size[0],
+                          img_size[1] // patch_size[1])
+        self.num_patches = self.grid_size[0] * self.grid_size[1]
+        self.flatten = flatten
+
+        self.proj = nn.Conv2d(in_chans, embed_dim, kernel_size=patch_size,
+                              stride=patch_size, bias=bias)
+        self.norm = norm_layer(embed_dim) if norm_layer else nn.Identity()
+
+    def forward(self, x):
+        _, _, H, W = x.shape
+        _assert(
+            H == self.img_size[0], f"Input image height ({H}) doesn't match model ({self.img_size[0]}).")
+        _assert(
+            W == self.img_size[1], f"Input image width ({W}) doesn't match model ({self.img_size[1]}).")
+        x = self.proj(x)
+        _, _, H, W = x.shape
+        if self.flatten:
+            x = x.flatten(2).transpose(1, 2)  # BCHW -> BNC
+        x = self.norm(x)
+        return x, H, W
+
+
 class OverlapPatchEmbed(nn.Module):
     """ Image to Patch Embedding
     """
@@ -308,3 +351,12 @@ class DWConv(nn.Module):
 
         return x
 
+
+def _ntuple(n):
+    def parse(x):
+        if isinstance(x, collections.abc.Iterable) and not isinstance(x, str):
+            return tuple(x)
+        return tuple(repeat(x, n))
+    return parse
+
+to_2tuple = _ntuple(2)

@@ -18,7 +18,6 @@ from util.datasets import build_fmow_dataset
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 
 
-
 def get_args_parser():
     parser = argparse.ArgumentParser("MAE pre-training", add_help=False)
     parser.add_argument(
@@ -50,9 +49,12 @@ def get_args_parser():
         help="Name of model to train",
     )
 
-    parser.add_argument("--input_size", default=112, type=int, help="images input size")
-    parser.add_argument("--patch_size", default=16, type=int, help="images input size")
-    parser.add_argument("--attention", default="shunted", type=str, help="attention name to use in transformer block")
+    parser.add_argument("--input_size", default=112,
+                        type=int, help="images input size")
+    parser.add_argument("--patch_size", default=16,
+                        type=int, help="images input size")
+    parser.add_argument("--attention", default="shunted", type=str,
+                        help="attention name to use in transformer block")
     parser.add_argument(
         "--mask_ratio",
         default=0.75,
@@ -154,7 +156,6 @@ def get_args_parser():
     parser.add_argument("--seed", default=0, type=int)
     parser.add_argument("--resume", default="", help="resume from checkpoint")
 
-
     parser.add_argument(
         "--start_epoch", default=0, type=int, metavar="N", help="start epoch"
     )
@@ -183,26 +184,26 @@ def get_args_parser():
 
 
 def main(args):
-    args.device="cuda:1"
-    # args.attention="shunted"
-    args.attention="scaled_dot_product"
+    args.device = "cuda:1"
+    args.attention = "shunted"
+    # args.attention="scaled_dot_product"
     root = '/mnt/com1822_HDD_16TB'
     # root = '/data2/HDD_16TB'
-    args.epochs=1
-    args.input_size=128
-    args.patch_size=16
-    patch_sizes=[2, 2, 2, 2]
-    args.batch_size=1
+    args.epochs = 1
+    args.input_size = 128
+    args.patch_size = 16
+    patch_sizes = [2, 2, 2, 2]
+    args.batch_size = 1
+    args.print_level = 2
     # args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv"
-    args.train_path=f"{root}/ICCV/data_temp/train_{args.input_size}_com2044.csv"
-    args.output_dir=f"{root}/ICCV/Model_Saving/out_i{args.input_size}_p{args.patch_size}_"\
-                    f"b{args.batch_size}_e{args.epochs}_{args.attention}_demo"
+    args.train_path = f"{root}/ICCV/data_temp/train_{args.input_size}_com2044.csv"
+    args.output_dir = f"{root}/ICCV/Model_Saving/out_i{args.input_size}_p{args.patch_size}_"\
+        f"b{args.batch_size}_e{args.epochs}_{args.attention}_demo"
     args.model = "shunted_mae_vit_large_patch16"
-    
-    
+
     if args.output_dir:
         Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-        
+
     misc.init_distributed_mode(args)
 
     device = torch.device(args.device)
@@ -225,45 +226,21 @@ def main(args):
     )
 
     # define the model
-    # TODO: try:
-    # - Many stages
-    # - Different rations, depths, heads, etc.
     model = models_mae.__dict__[args.model](
         img_size=args.input_size,
         patch_sizes=patch_sizes,
         in_chans=dataset_train.in_c,
         norm_pix_loss=args.norm_pix_loss,
-        # args after shunted changes
-        embed_dims=[64, 128, 256, 512],
-        num_heads=[2, 4, 8, 16],
-        mlp_ratios=[8, 8, 4, 4], 
-        drop_rate=0.,
-        attn_drop_rate=0., 
-        drop_path_rate=0., 
-        depths=[1, 2, 4, 1], 
-        sr_ratios=[2, 2, 2, 2],
-        num_stages=4, 
-        num_conv=0,
-        # Decoder        
-        decoder_embed_dim=512,
-        decoder_depth=8,
-        decoder_num_heads=2)
-    
+        print_level=args.print_level)
+
     model.to(device)
 
     model_without_ddp = model
-    # print("Model = %s" % str(model_without_ddp))
 
     eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
 
     if args.lr is None:  # only base_lr is specified
         args.lr = args.blr * eff_batch_size / 256
-
-    print("base lr: %.2e" % (args.lr * 256 / eff_batch_size))
-    print("actual lr: %.2e" % args.lr)
-
-    print("accumulate grad iterations: %d" % args.accum_iter)
-    print("effective batch size: %d" % eff_batch_size)
 
     if args.distributed:
         model = torch.nn.parallel.DistributedDataParallel(
@@ -272,9 +249,9 @@ def main(args):
         model_without_ddp = model.module
 
     # following timm: set wd as 0 for bias and norm layers
-    param_groups = optim_factory.add_weight_decay(model_without_ddp, args.weight_decay)
+    param_groups = optim_factory.add_weight_decay(
+        model_without_ddp, args.weight_decay)
     optimizer = torch.optim.AdamW(param_groups, lr=args.lr, betas=(0.9, 0.95))
-    # print(optimizer)
     loss_scaler = NativeScaler()
 
     misc.load_model(
@@ -321,7 +298,6 @@ def main(args):
                 os.path.join(args.output_dir, "log.txt"), mode="a", encoding="utf-8"
             ) as f:
                 f.write(json.dumps(log_stats) + "\n")
-
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
