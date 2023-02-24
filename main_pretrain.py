@@ -16,7 +16,6 @@ import models_mae
 import models_mae_group_channels
 import models_mae_temporal
 import numpy as np
-import timm
 
 # assert timm.__version__ == "0.3.2"  # version check
 import timm.optim.optim_factory as optim_factory
@@ -44,6 +43,12 @@ def get_args_parser():
         default=1,
         type=int,
         help="Accumulate gradient iterations (for increasing the effective batch size under memory constraints)",
+    ) 
+    parser.add_argument(
+        "--print_level",
+        default=1,
+        type=int,
+        help="Print Level (0->3) - Only for MaskedAutoencoderShuntedViT",
     )
 
     # Model parameters
@@ -61,9 +66,38 @@ def get_args_parser():
         help="Name of model to train",
     )
 
-    parser.add_argument("--input_size", default=224, type=int, help="images input size")
-    parser.add_argument("--patch_size", default=16, type=int, help="images input size")
-    parser.add_argument("--attention", default="scaled_dot_product", type=str, help="attention name to use in transformer block")
+    parser.add_argument("--input_size", 
+                        default=224, 
+                        type=int, 
+                        help="images input size")
+    parser.add_argument("--patch_size", 
+                        default=16, 
+                        type=int, 
+                        help="images patch size")
+    
+    parser.add_argument("--patch_sizes", 
+                        default='2-2-2-2', 
+                        type=str, help="multi-stage patch sizes (sep with -)")
+    parser.add_argument("--embed_dims", 
+                        default='64-128-256-512', 
+                        type=str, help="multi-stage embed dims (sep with -)")
+    parser.add_argument("--depths", 
+                        default='1-2-4-1', 
+                        type=str, help="multi-stage encoder  depths (sep with -)")
+    parser.add_argument("--num_heads", 
+                        default='2-4-8-16', 
+                        type=str, help="multi-stage num heads (sep with -)")
+    parser.add_argument("--mlp_ratios", 
+                        default='8-8-4-4', 
+                        type=str, help="multi-stage mlp ratios (sep with -)")
+    parser.add_argument("--sr_ratios", 
+                        default='2-2-2-2', 
+                        type=str, help="multi-stage sr ratios (sep with -)")
+    
+    parser.add_argument("--attention", 
+                        default="scaled_dot_product", 
+                        type=str, 
+                        help="attention name to use in transformer block")
     parser.add_argument(
         "--mask_ratio",
         default=0.75,
@@ -263,13 +297,38 @@ def main(args):
         )
     # non-spatial, non-temporal
     else:
-        model = models_mae.__dict__[args.model](
-            img_size=args.input_size,
-            patch_size=args.patch_size,
-            in_chans=dataset_train.in_c,
-            norm_pix_loss=args.norm_pix_loss,
-            attention=args.attention
-        )
+        if args.attention == 'shunted':
+            if 'shunted' not in args.model:
+                raise ValueError('shunted attention only supported for shunted models')
+            sep = '|'
+            to_list = lambda x: [int(y) for y in x.split(sep)]
+            patch_sizes = to_list(args.patch_sizes)
+            embed_dims = to_list(args.embed_dims)
+            depths = to_list(args.depths)
+            num_heads = to_list(args.num_heads)
+            mlp_ratios = to_list(args.mlp_ratios)
+            sr_ratios = to_list(args.sr_ratios)
+        
+            model = models_mae.__dict__[args.model](
+                img_size=args.input_size,
+                patch_sizes=patch_sizes,
+                embed_dims=embed_dims,
+                depths=depths,
+                num_heads=num_heads,
+                mlp_ratios=mlp_ratios,
+                sr_ratios=sr_ratios,
+                in_chans=dataset_train.in_c,
+                norm_pix_loss=args.norm_pix_loss,
+                print_level=args.print_level
+            )
+        else:
+            model = models_mae.__dict__[args.model](
+                img_size=args.input_size,
+                patch_size=args.patch_size,
+                in_chans=dataset_train.in_c,
+                norm_pix_loss=args.norm_pix_loss,
+                attention=args.attention
+            )
     model.to(device)
 
     model_without_ddp = model

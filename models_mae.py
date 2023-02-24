@@ -15,13 +15,18 @@ from util.pos_embed import get_2d_sincos_pos_embed
 from shunted import Block as ShuntedBlock, PatchEmbed as ShuntedPatchEmbed, OverlapPatchEmbed
 
 # TODO
-# - [ ] Try TimmPatch Embed
-# - [ ] Try OverlapPatchEmbed
-# - [ ] Try ShuntedHead
-# - [ ] Try Multi-stage Decoder
-# - [ ] Try Different Configurations
-# - [ ] Integrate with main_pretrain.py
-# - [ ] Create function that generates model name form iterable args
+# - [Χ] Integrate shunted multi-stage encoder into SatMAE
+# - [Χ] Integrate new model into `main_pretrain.py`
+# - [X] Create a function that generates the model name from iterable args
+# - [ ] Compare and pick from the 3 available patch embedding methods
+# - [ ] Try using the ShuntedHead in the first stage (if possible)
+# - [ ] Try using encoder `pos_embed`, and `cls_token` in the Encoder (if possible)
+# - [ ] Add config option to use `ShuntedHead`, `pos_embed`, and `cls_token`
+# - [ ] Try many different configurations to make sure shapes always match
+# - [ ] Train for a few epochs to make sure it learns and compare 
+# - [ ] Try creating an XFormer version using XFormer's `AttentionConfig, register_attention` 
+# - [ ] Try creating a multi-stage decoder
+# - [ ] Decide a few good model configurations and run the experiments
 
 class MaskedAutoencoderShuntedViT(nn.Module):
     """Masked Autoencoder with Shunted VisionTransformer backbone"""
@@ -851,17 +856,12 @@ def mae_vit_huge_patch14_dec512d8b(**kwargs):
     )
     return model
 
-
+# Shunted Transformer
 def shunted_mae_vit_large_patch16_dec512d8b(**kwargs):
     model = MaskedAutoencoderShuntedViT(
         # Encoder
         num_stages=4,
-        embed_dims=[64, 128, 256, 512],
-        depths=[1, 2, 4, 1], 
-        num_heads=[2, 4, 8, 16],
-        mlp_ratios=[8, 8, 4, 4], 
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        sr_ratios=[2, 2, 2, 2],
         attn_drop_rate=0., 
         drop_path_rate=0., 
         drop_rate=0.,

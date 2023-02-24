@@ -191,13 +191,18 @@ def main(args):
     # root = '/data2/HDD_16TB'
     args.epochs = 1
     args.input_size = 128
-    args.patch_size = 16
     patch_sizes = [2, 2, 2, 2]
+    str_patch_sizes = '-'.join([str(i) for i in patch_sizes])
     args.batch_size = 1
     args.print_level = 2
-    # args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv"
-    args.train_path = f"{root}/ICCV/data_temp/train_{args.input_size}_com2044.csv"
-    args.output_dir = f"{root}/ICCV/Model_Saving/out_i{args.input_size}_p{args.patch_size}_"\
+    embed_dims=[64, 128, 256, 512]
+    depths=[1, 2, 4, 1]
+    num_heads=[2, 4, 8, 16]
+    mlp_ratios=[8, 8, 4, 4]
+    sr_ratios=[2, 2, 2, 2]
+    # args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv" # 1822
+    args.train_path = f"{root}/fmow-rgb-preproc/train_{args.input_size}_com2044.csv" # 2044
+    args.output_dir = f"{root}/ICCV/Model_Saving/out_i{args.input_size}_p{str_patch_sizes}_"\
         f"b{args.batch_size}_e{args.epochs}_{args.attention}_demo"
     args.model = "shunted_mae_vit_large_patch16"
 
@@ -229,9 +234,14 @@ def main(args):
     model = models_mae.__dict__[args.model](
         img_size=args.input_size,
         patch_sizes=patch_sizes,
+        embed_dims=embed_dims,
+        depths=depths,
+        num_heads=num_heads,
+        mlp_ratios=mlp_ratios,
+        sr_ratios=sr_ratios,
         in_chans=dataset_train.in_c,
         norm_pix_loss=args.norm_pix_loss,
-        print_level=args.print_level)
+        print_level=args.print_level,)
 
     model.to(device)
 

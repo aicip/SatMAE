@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 from torch import _assert
-import collections.abc
-from itertools import repeat
 
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 import math
@@ -351,12 +349,3 @@ class DWConv(nn.Module):
 
         return x
 
-
-def _ntuple(n):
-    def parse(x):
-        if isinstance(x, collections.abc.Iterable) and not isinstance(x, str):
-            return tuple(x)
-        return tuple(repeat(x, n))
-    return parse
-
-to_2tuple = _ntuple(2)
