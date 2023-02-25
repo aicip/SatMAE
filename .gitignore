@@ -164,3 +164,8 @@ output_dir/
 
 .vscode
 .DS_Store
+wandb
+
+*.csv
+data
+tmp_*
