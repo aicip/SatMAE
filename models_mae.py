@@ -44,7 +44,7 @@ class MaskedAutoencoderViT(nn.Module):
         # Other parameters
         norm_layer=nn.LayerNorm,  # Note: Only used if use_xformers=False
         norm_pix_loss=False,
-        use_xformers=False,
+        use_xformers=True,
     ):
         super().__init__()
 
@@ -76,7 +76,7 @@ class MaskedAutoencoderViT(nn.Module):
             encoder_config = xFormerConfig(
                 [
                     {
-                        "reversible": True,  # This decreases memory usage but increases latency
+                        "reversible": False,  # This decreases memory usage but increases latency
                         "block_type": "encoder",
                         "num_layers": encoder_num_layers,
                         "dim_model": dim_model,
@@ -88,8 +88,8 @@ class MaskedAutoencoderViT(nn.Module):
                                 "name": attention,
                                 "dropout": attn_dropout,
                                 "seq_len": num_patches + 1,  # This adds the mask token
-                                "causal": False
-                                # "use_rotary_embeddings": True, # TODO: Check if this would be useful
+                                "causal": False,
+                                "use_rotary_embeddings": False,  # TODO: Check if this would be useful
                             },
                         },
                         "feedforward_config": {
@@ -106,7 +106,7 @@ class MaskedAutoencoderViT(nn.Module):
             decoder_config = xFormerConfig(
                 [
                     {
-                        "reversible": True,
+                        "reversible": False,
                         # Using encoder here since the rest of the decoder parts are handled manually (see below)
                         "block_type": "encoder",
                         "num_layers": decoder_num_layers,
@@ -120,7 +120,7 @@ class MaskedAutoencoderViT(nn.Module):
                                 "dropout": attn_dropout,
                                 "seq_len": num_patches + 1,  # This adds the mask token
                                 "causal": False,
-                                # "use_rotary_embeddings": True, # TODO: Check if this would be useful
+                                "use_rotary_embeddings": False,  # TODO: Check if this would be useful
                             },
                         },
                         "feedforward_config": {
