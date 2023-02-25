@@ -116,7 +116,10 @@ class SatelliteDataset(Dataset):
             t.append(transforms.Normalize(mean, std))
             t.append(
                 transforms.RandomResizedCrop(
-                    input_size, scale=(0.2, 1.0), interpolation=interpol_mode
+                    input_size,
+                    scale=(0.2, 1.0),
+                    interpolation=interpol_mode,
+                    antialias=True,
                 ),  # 3 is bicubic
             )
             t.append(transforms.RandomHorizontalFlip())
@@ -133,7 +136,7 @@ class SatelliteDataset(Dataset):
         t.append(transforms.Normalize(mean, std))
         t.append(
             transforms.Resize(
-                size, interpolation=interpol_mode
+                size, interpolation=interpol_mode, antialias=True
             ),  # to maintain same ratio w.r.t. 224 images
         )
         t.append(transforms.CenterCrop(input_size))

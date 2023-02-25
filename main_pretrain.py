@@ -17,7 +17,6 @@ import models_mae
 import models_mae_group_channels
 import models_mae_temporal
 import numpy as np
-import timm
 
 # assert timm.__version__ == "0.3.2"  # version check
 import timm.optim.optim_factory as optim_factory
@@ -282,6 +281,7 @@ def main(args):
             norm_pix_loss=args.norm_pix_loss,
             attention=args.attention,
         )
+
     model.to(device)
 
     model_without_ddp = model

@@ -30,14 +30,21 @@ pip install timm==0.4.12
 
 ## Xformers Implementation Notes
 
+```
+python -m xformers.info
+```
+
 All of the following tests & metrics assume the following configuration:
 
 - Batch Size: 64 (5680 steps per epoch)
 
+TODO: look into Xformers 'visual' attention
 TODO: Test memory, speed, and accuracy of TF32
 
 ```
+
 torch.backends.cuda.matmul.allow_tf32 = True
+
 ```
 
 TODO: Test MLP vs FusedMLP in Xformers TransformerBlock
@@ -128,6 +135,7 @@ You can download the fMoW dataset [here](https://github.com/fMoW/dataset). Then 
 After you download the dataset and metadata files, your directory should look like:
 
 ```
+
 <PATH_TO_DATASET_ROOT_FOLDER>
 --- train_62classes.csv
 --- val_62classes.csv
@@ -138,6 +146,7 @@ After you download the dataset and metadata files, your directory should look li
 ------- val
 ---------- airport
 ---------- ...
+
 ```
 
 ### Pretraining
