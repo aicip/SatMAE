@@ -326,6 +326,10 @@ def main(args):
         wandb.config.update(args)
         wandb.watch(model)
 
+    model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+    params = sum([np.prod(p.size()) for p in model_parameters])
+    print(f"Number of trainable parameters: {params}")
+
     print(f"Start training for {args.epochs} epochs")
     start_time = time.time()
     for epoch in range(args.start_epoch, args.epochs):

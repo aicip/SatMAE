@@ -9,7 +9,7 @@ from functools import partial
 
 import torch
 import torch.nn as nn
-from timm.models.vision_transformer import PatchEmbed
+from timm.models.vision_transformer import Block, PatchEmbed
 from util.pos_embed import get_2d_sincos_pos_embed
 from xformers.factory import xFormer, xFormerConfig
 
@@ -34,21 +34,22 @@ class MaskedAutoencoderViT(nn.Module):
         residual_norm_style="post",
         residual_dropout=0.0,
         # Feedforward parameters
-        feedforward="MLP",
-        feedforward_activation="gelu",
-        feedforward_hidden_layer_multiplier=4.0,
-        feedforward_dropout=0.0,
+        ffn_name="MLP",  # Note: Only used if use_xformers=True currently
+        ffn_activation="gelu",  # Note: Only used if use_xformers=True currently
+        ffn_ratio=4.0,
+        ffn_dropout=0.0,
         # Attention parameters
-        attention=None, # Passed from pretrain script
-        attention_dropout=0.0,
+        attention=None,  # Passed from pretrain script
+        attn_dropout=0.0,
         # Other parameters
-        reversible=False,
+        norm_layer=nn.LayerNorm,  # Note: Only used if use_xformers=False
         norm_pix_loss=False,
-        norm_layer=nn.LayerNorm,  # TODO: This is not used anymore (check if XFormer has it for sure)
+        use_xformers=False,
     ):
         super().__init__()
 
         self.in_c = in_chans
+        self.use_xformers = use_xformers
 
         # --------------------------------------------------------------------------
         # MAE encoder specifics
@@ -62,42 +63,6 @@ class MaskedAutoencoderViT(nn.Module):
             torch.zeros(1, num_patches + 1, dim_model), requires_grad=False
         )  # fixed sin-cos embedding
 
-        num_patches = (img_size // patch_size) ** 2
-
-        encoder_xformer_config = [
-            {
-                "reversible": reversible,  # This decreases memory usage but increases latency
-                "block_type": "encoder",
-                "num_layers": encoder_num_layers,
-                "dim_model": dim_model,
-                "residual_norm_style": residual_norm_style,
-                "multi_head_config": {
-                    "num_heads": encoder_num_heads,
-                    "residual_dropout": residual_dropout,
-                    "attention": {
-                        "name": attention,
-                        "dropout": attention_dropout,
-                        "seq_len": num_patches + 1,  # This adds the mask token
-                        "causal": False,  # TODO: Check if needs to be True
-                        # "use_rotary_embeddings": True, # TODO: Check if this would be useful
-                    },
-                },
-                "feedforward_config": {
-                    "name": feedforward,
-                    "dropout": feedforward_dropout,
-                    "activation": feedforward_activation,
-                    "hidden_layer_multiplier": feedforward_hidden_layer_multiplier,
-                },
-            }
-        ]
-
-        encoder_config = xFormerConfig(encoder_xformer_config)
-        self.encoder = xFormer.from_config(encoder_config)
-        # TODO: The norm may already be handled by XFormer (check this)
-        # self.encoder_norm = norm_layer(embed_dim)
-
-        # --------------------------------------------------------------------------
-
         # --------------------------------------------------------------------------
         # MAE decoder specifics
         self.decoder_embed = nn.Linear(dim_model, decoder_embed_dim, bias=True)
@@ -107,42 +72,122 @@ class MaskedAutoencoderViT(nn.Module):
             torch.zeros(1, num_patches + 1, decoder_embed_dim), requires_grad=False
         )  # fixed sin-cos embedding
 
-        decoder_xformer_config = [
-            {
-                "reversible": reversible,
-                # Using encoder here since the rest of the decoder parts are handled manually (see below)
-                "block_type": "encoder",
-                "num_layers": decoder_num_layers,
-                "dim_model": decoder_embed_dim,
-                "residual_norm_style": residual_norm_style,
-                "multi_head_config": {
-                    "num_heads": decoder_num_heads,
-                    "residual_dropout": residual_dropout,
-                    "attention": {
-                        "name": attention,
-                        "dropout": attention_dropout,
-                        "seq_len": num_patches + 1,  # This adds the mask token
-                        "causal": False,
-                        # "use_rotary_embeddings": True, # TODO: Check if this would be useful
-                    },
-                },
-                "feedforward_config": {
-                    "name": feedforward,
-                    "dropout": feedforward_dropout,
-                    "activation": feedforward_activation,
-                    "hidden_layer_multiplier": feedforward_hidden_layer_multiplier,
-                },
-            }
-        ]
+        if use_xformers:
+            encoder_config = xFormerConfig(
+                [
+                    {
+                        "reversible": False,  # This decreases memory usage but increases latency
+                        "block_type": "encoder",
+                        "num_layers": encoder_num_layers,
+                        "dim_model": dim_model,
+                        "residual_norm_style": residual_norm_style,
+                        "multi_head_config": {
+                            "num_heads": encoder_num_heads,
+                            "residual_dropout": residual_dropout,
+                            "attention": {
+                                "name": attention,
+                                "dropout": attn_dropout,
+                                "seq_len": num_patches + 1,  # This adds the mask token
+                                "causal": False
+                                # "use_rotary_embeddings": True, # TODO: Check if this would be useful
+                            },
+                        },
+                        "feedforward_config": {
+                            "name": ffn_name,
+                            "dropout": ffn_dropout,
+                            "activation": ffn_activation,
+                            "hidden_layer_multiplier": ffn_ratio,
+                        },
+                    }
+                ]
+            )
+            self.encoder = xFormer.from_config(encoder_config)
 
-        decoder_config = xFormerConfig(decoder_xformer_config)
-        self.decoder = xFormer.from_config(decoder_config)
-        # TODO: The norm may already be handled by XFormer (check this)
-        # self.decoder_norm = norm_layer(decoder_embed_dim)
+            decoder_config = xFormerConfig(
+                [
+                    {
+                        "reversible": False,
+                        # Using encoder here since the rest of the decoder parts are handled manually (see below)
+                        "block_type": "encoder",
+                        "num_layers": decoder_num_layers,
+                        "dim_model": decoder_embed_dim,
+                        "residual_norm_style": residual_norm_style,
+                        "multi_head_config": {
+                            "num_heads": decoder_num_heads,
+                            "residual_dropout": residual_dropout,
+                            "attention": {
+                                "name": attention,
+                                "dropout": attn_dropout,
+                                "seq_len": num_patches + 1,  # This adds the mask token
+                                "causal": False,
+                                # "use_rotary_embeddings": True, # TODO: Check if this would be useful
+                            },
+                        },
+                        "feedforward_config": {
+                            "name": ffn_name,
+                            "dropout": ffn_dropout,
+                            "activation": ffn_activation,
+                            "hidden_layer_multiplier": ffn_ratio,
+                        },
+                    }
+                ]
+            )
+            self.decoder = xFormer.from_config(decoder_config)
+        else:
+            encoder_blocks = [
+                Block(
+                    dim=dim_model,
+                    num_heads=encoder_num_heads,
+                    mlp_ratio=ffn_ratio,
+                    qkv_bias=True,
+                    drop=ffn_dropout,
+                    attn_drop=attn_dropout,
+                    norm_layer=norm_layer,
+                    drop_path=residual_dropout,
+                )
+                for _ in range(encoder_num_layers)
+            ]
+            encoder_norm = nn.LayerNorm(dim_model)
+            if residual_norm_style == "post":
+                encoder_blocks.append(encoder_norm)
+            elif residual_norm_style == "pre":
+                encoder_blocks.insert(0, encoder_norm)
+            else:
+                raise ValueError(
+                    f"residual_norm_style: {residual_norm_style} not supported"
+                )
 
+            self.encoder = nn.ModuleList(encoder_blocks)
+
+            decoder_blocks = [
+                Block(
+                    dim=decoder_embed_dim,
+                    num_heads=decoder_num_heads,
+                    mlp_ratio=ffn_ratio,
+                    qkv_bias=True,
+                    drop=ffn_dropout,
+                    attn_drop=attn_dropout,
+                    norm_layer=norm_layer,
+                    drop_path=residual_dropout,
+                )
+                for _ in range(decoder_num_layers)
+            ]
+            decoder_norm = nn.LayerNorm(decoder_embed_dim)
+            if residual_norm_style == "post":
+                decoder_blocks.append(decoder_norm)
+            elif residual_norm_style == "pre":
+                decoder_blocks.insert(0, decoder_norm)
+            else:
+                raise ValueError(
+                    f"residual_norm_style: {residual_norm_style} not supported"
+                )
+
+            self.decoder = nn.ModuleList(decoder_blocks)
+
+        # decoder to patch
         self.decoder_pred = nn.Linear(
             decoder_embed_dim, patch_size**2 * in_chans, bias=True
-        )  # decoder to patch
+        )
         # --------------------------------------------------------------------------
 
         self.norm_pix_loss = norm_pix_loss
@@ -269,10 +314,11 @@ class MaskedAutoencoderViT(nn.Module):
         x = torch.cat((cls_tokens, x), dim=1)
 
         # apply Transformer blocks
-        # for blk in self.encoder_blocks:
-        #     x = blk(x)
-        x = self.encoder(x)
-        # x = self.encoder_norm(x)
+        if self.use_xformers:
+            x = self.encoder(x)
+        else:
+            for blk in self.encoder:
+                x = blk(x)
 
         return x, mask, ids_restore
 
@@ -294,10 +340,11 @@ class MaskedAutoencoderViT(nn.Module):
         x = x + self.decoder_pos_embed
 
         # apply Transformer blocks
-        # for blk in self.decoder_blocks:
-        #     x = blk(x)
-        x = self.decoder(x)
-        # x = self.decoder_norm(x)
+        if self.use_xformers:
+            x = self.decoder(x)
+        else:
+            for blk in self.decoder:
+                x = blk(x)
 
         # predictor projection
         x = self.decoder_pred(x)
@@ -344,9 +391,9 @@ def mae_vit_base_patch16_dec512d8b(**kwargs):
         decoder_embed_dim=512,
         decoder_num_layers=8,
         decoder_num_heads=16,
-        feedforward_hidden_layer_multiplier=4,
+        ffn_ratio=4,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        **kwargs
+        **kwargs,
     )
     return model
 
@@ -359,9 +406,9 @@ def mae_vit_large_patch16_dec512d8b(**kwargs):
         decoder_embed_dim=512,
         decoder_num_layers=8,
         decoder_num_heads=16,
-        feedforward_hidden_layer_multiplier=4,
+        ffn_ratio=4,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        **kwargs
+        **kwargs,
     )
     return model
 
@@ -374,9 +421,9 @@ def mae_vit_huge_patch14_dec512d8b(**kwargs):
         decoder_embed_dim=512,
         decoder_num_layers=8,
         decoder_num_heads=16,
-        feedforward_hidden_layer_multiplier=4,
+        ffn_ratio=4,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        **kwargs
+        **kwargs,
     )
     return model
 
