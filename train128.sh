@@ -1,11 +1,11 @@
 #!/bin/zsh
 
-DEVICE="cuda:3"
+DEVICE="cuda:0"
 
 EPOCHS=200
 BATCH_SIZE=64
 
-INPUT_SIZE=224
+INPUT_SIZE=128
 PATCH_SIZE=16
 
 ATTENTION="scaled_dot_product"
