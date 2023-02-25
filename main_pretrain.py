@@ -85,7 +85,8 @@ def get_args_parser():
 
     parser.add_argument(
         "--norm_pix_loss",
-        action="store_false",
+        # action="store_false",
+        action="store_true",
         help="Use (per-patch) normalized pixels as targets for computing loss",
     )
     parser.set_defaults(norm_pix_loss=False)
