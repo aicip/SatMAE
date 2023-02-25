@@ -76,7 +76,7 @@ class MaskedAutoencoderViT(nn.Module):
             encoder_config = xFormerConfig(
                 [
                     {
-                        "reversible": False,  # This decreases memory usage but increases latency
+                        "reversible": True,  # This decreases memory usage but increases latency
                         "block_type": "encoder",
                         "num_layers": encoder_num_layers,
                         "dim_model": dim_model,
@@ -106,7 +106,7 @@ class MaskedAutoencoderViT(nn.Module):
             decoder_config = xFormerConfig(
                 [
                     {
-                        "reversible": False,
+                        "reversible": True,
                         # Using encoder here since the rest of the decoder parts are handled manually (see below)
                         "block_type": "encoder",
                         "num_layers": decoder_num_layers,
