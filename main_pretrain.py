@@ -8,6 +8,7 @@ import argparse
 import datetime
 import json
 import os
+import socket
 import time
 import traceback
 from pathlib import Path
@@ -175,7 +176,12 @@ def get_args_parser():
         default=None,
         help="Wandb project name, eg: sentinel_pretrain",
     )
-
+    parser.add_argument(
+        "--wandb_entity",
+        type=str,
+        default="utk-iccv23",
+        help="Wandb entity name, eg: utk-iccv23",
+    )
     parser.add_argument(
         "--start_epoch", default=0, type=int, metavar="N", help="start epoch"
     )
@@ -310,9 +316,12 @@ def main(args):
         loss_scaler=loss_scaler,
     )
 
+    hostname = socket.gethostname()
+    print(f"Hostname: {hostname}")
     # Set up wandb
     if global_rank == 0 and args.wandb is not None:
-        wandb.init(project=args.wandb, entity="utk-iccv23")
+        # get pc hostname
+        wandb.init(project=args.wandb, entity=args.wandb_entity, tags=[hostname])
         wandb.config.update(args)
         wandb.watch(model)
 
