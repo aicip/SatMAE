@@ -63,7 +63,12 @@ def get_args_parser():
 
     parser.add_argument("--input_size", default=224, type=int, help="images input size")
     parser.add_argument("--patch_size", default=16, type=int, help="images input size")
-    parser.add_argument("--attention", default="scaled_dot_product", type=str, help="attention name to use in transformer block")
+    parser.add_argument(
+        "--attention",
+        default="scaled_dot_product",
+        type=str,
+        help="attention name to use in transformer block",
+    )
     parser.add_argument(
         "--mask_ratio",
         default=0.75,
@@ -201,8 +206,8 @@ def get_args_parser():
 def main(args):
     misc.init_distributed_mode(args)
 
-    print("job dir: {}".format(os.path.dirname(os.path.realpath(__file__))))
-    print("{}".format(args).replace(", ", ",\n"))
+    print(f"job dir: {os.path.dirname(os.path.realpath(__file__))}")
+    print(f"{args}".replace(", ", ",\n"))
 
     device = torch.device(args.device)
 
@@ -224,7 +229,7 @@ def main(args):
         sampler_train = torch.utils.data.DistributedSampler(
             dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=True
         )
-        print("Sampler_train = %s" % str(sampler_train))
+        print(f"Sampler_train = {str(sampler_train)}")
     else:
         sampler_train = torch.utils.data.RandomSampler(dataset_train)
 
@@ -268,12 +273,12 @@ def main(args):
             patch_size=args.patch_size,
             in_chans=dataset_train.in_c,
             norm_pix_loss=args.norm_pix_loss,
-            attention=args.attention
+            attention=args.attention,
         )
     model.to(device)
 
     model_without_ddp = model
-    print("Model = %s" % str(model_without_ddp))
+    print(f"Model = {str(model_without_ddp)}")
 
     eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
 
@@ -372,7 +377,7 @@ def main(args):
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-    print("Training time {}".format(total_time_str))
+    print(f"Training time {total_time_str}")
 
 
 if __name__ == "__main__":
