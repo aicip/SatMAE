@@ -13,19 +13,20 @@ import time
 import traceback
 from pathlib import Path
 
-import models_mae
-import models_mae_group_channels
-import models_mae_temporal
 import numpy as np
 
 # assert timm.__version__ == "0.3.2"  # version check
 import timm.optim.optim_factory as optim_factory
 import torch
 import torch.backends.cudnn as cudnn
+from torch.utils.tensorboard import SummaryWriter
+
+import models_mae
+import models_mae_group_channels
+import models_mae_temporal
 import util.misc as misc
 import wandb
 from engine_pretrain import train_one_epoch, train_one_epoch_temporal
-from torch.utils.tensorboard import SummaryWriter
 from util.datasets import build_fmow_dataset
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 

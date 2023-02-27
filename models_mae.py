@@ -11,8 +11,9 @@ import torch
 import torch.nn as nn
 import xformers
 from timm.models.vision_transformer import Block, PatchEmbed
-from util.pos_embed import get_2d_sincos_pos_embed
 from xformers.factory import xFormer, xFormerConfig
+
+from util.pos_embed import get_2d_sincos_pos_embed
 
 # xformers._is_functorch_available = True
 
@@ -76,6 +77,7 @@ class MaskedAutoencoderViT(nn.Module):
         )  # fixed sin-cos embedding
 
         if use_xformers:
+            print("Using xformers")
             encoder_config = xFormerConfig(
                 [
                     {
@@ -137,6 +139,7 @@ class MaskedAutoencoderViT(nn.Module):
             )
             self.decoder = xFormer.from_config(decoder_config)
         else:
+            print("Using Timm")
             encoder_blocks = [
                 Block(
                     dim=dim_model,
