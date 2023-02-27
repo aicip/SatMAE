@@ -38,7 +38,7 @@ class MaskedAutoencoderViT(nn.Module):
         residual_norm_style="post",
         residual_dropout=0.0,
         # Feedforward parameters
-        ffn_name="FusedMLP",  # Note: Only used if use_xformers=True currently
+        ffn_name="MLP",  # Note: Only used if use_xformers=True currently
         ffn_activation="gelu",  # Note: Only used if use_xformers=True currently
         ffn_ratio=4.0,
         ffn_dropout=0.0,
