@@ -190,14 +190,24 @@ def main(args):
     root = '/data2/HDD_16TB'
     args.print_level = 3
     args.epochs = 1
-    args.batch_size = 8
+    # 4 stages
+    args.batch_size = 1
     args.input_size = 64
     patch_sizes = [2, 2, 2, 2]
-    embed_dims=[32, 64, 128, 256]
+    embed_dims=[64, 128, 256, 512]
     depths=[1, 2, 4, 1]
     num_heads=[2, 4, 8, 16]
     mlp_ratios=[8, 8, 4, 4]
     sr_ratios=[2, 2, 2, 2]
+    # 3 stages    
+    # args.batch_size = 32
+    # args.input_size = 64
+    # patch_sizes = [4, 2, 2]
+    # embed_dims=[64, 128, 256]
+    # depths=[2, 4, 1]
+    # num_heads=[4, 8, 16]
+    # mlp_ratios=[8, 4, 4]
+    # sr_ratios=[2, 2, 2]
     str_patch_sizes = '|'.join([str(i) for i in patch_sizes])
     args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv" # 1822
     # args.train_path = f"{root}/fmow-rgb-preproc/train_{args.input_size}_com2044.csv" # 2044

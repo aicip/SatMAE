@@ -144,8 +144,9 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                         f"\t\t(H * W * (1 - self.mask_ratio))**0.5 = {next_embed_img_size}")
                     raise e
                 next_embed_img_size = int(next_embed_img_size)
+                if self.print_level > 0:
+                    print(f"\tApplied mask_ratio: {self.mask_ratio}")
             if self.print_level > 0:
-                print(f"\tApplied mask_ratio: {self.mask_ratio}")
                 print("\tNext Patch_embed.img_size: ", next_embed_img_size)
 
             # Encoder Transformer Block
@@ -391,7 +392,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         return x_masked, mask, ids_restore
 
     def forward_encoder(self, x):
-        B = x.shape[0]  # This should be 1
+        B = x.shape[0]  # Batch Size
         if self.print_level > 1:
             print("--"*8, " Encoder ", "--"*8)
             print(f"Original x.shape: {x.shape}")
