@@ -23,10 +23,9 @@ from shunted import Block as ShuntedBlock, PatchEmbed as ShuntedPatchEmbed, Head
 # - [X] Try using encoder `pos_embed`, and `cls_token` in the Encoder (probably not compatible)
 # - [X] Add config option to use `ShuntedHead`, `pos_embed`, and `cls_token` (did only for shuntedhead)
 # - [X] Try many different configurations to make sure shapes always match
-# - [ ] Train for a few epochs to make sure it learns and compare
+# - [X] Train for a few epochs to make sure it learns
+# - [ ] Find some good model configurations and run the experiments
 # - [ ] Try creating an XFormer version using XFormer's `AttentionConfig, register_attention`
-# - [ ] Try creating a multi-stage decoder
-# - [ ] Decide a few good model configurations and run the experiments
 
 
 class MaskedAutoencoderShuntedViT(nn.Module):

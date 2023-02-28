@@ -186,22 +186,21 @@ def get_args_parser():
 def main(args):
     args.device = "cuda:1"
     args.attention = "shunted"
-    # args.attention="scaled_dot_product"
-    root = '/mnt/com1822_HDD_16TB'
-    # root = '/data2/HDD_16TB'
-    args.epochs = 1
-    args.input_size = 128
-    patch_sizes = [2, 2, 2, 2]
-    str_patch_sizes = '|'.join([str(i) for i in patch_sizes])
-    args.batch_size = 1
+    # root = '/mnt/com1822_HDD_16TB'
+    root = '/data2/HDD_16TB'
     args.print_level = 3
-    embed_dims=[64, 128, 256, 512]
+    args.epochs = 1
+    args.batch_size = 8
+    args.input_size = 64
+    patch_sizes = [2, 2, 2, 2]
+    embed_dims=[32, 64, 128, 256]
     depths=[1, 2, 4, 1]
     num_heads=[2, 4, 8, 16]
     mlp_ratios=[8, 8, 4, 4]
     sr_ratios=[2, 2, 2, 2]
-    # args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv" # 1822
-    args.train_path = f"{root}/fmow-rgb-preproc/train_{args.input_size}_com2044.csv" # 2044
+    str_patch_sizes = '|'.join([str(i) for i in patch_sizes])
+    args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv" # 1822
+    # args.train_path = f"{root}/fmow-rgb-preproc/train_{args.input_size}_com2044.csv" # 2044
     args.output_dir = f"{root}/ICCV/Model_Saving/out_i{args.input_size}_p{str_patch_sizes}_"\
         f"b{args.batch_size}_e{args.epochs}_{args.attention}_demo"
     args.model = "shunted_mae_vit_large_patch16"
