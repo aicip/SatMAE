@@ -51,10 +51,9 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                  drop_path_rate=0.,
                  depths=[3, 4, 6, 3],
                  sr_ratios=[8, 4, 2, 1],
-                 num_stages=4,
                  num_conv=0,
                  mask_ratio=0.75,
-                 print_level=0, # for level>1 it ony runs one pass
+                 print_level=0,  # for level>1 it ony runs one pass
                  # Only defaults work
                  use_overlap_patch_embed=False,
                  use_shunted_head=False
@@ -80,9 +79,11 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             print(f"use_shunted_head: {use_shunted_head}")
 
             print("--"*8, "Init Encoder", "--"*8)
+        assert (len(patch_sizes) == len(embed_dims) == len(num_heads) ==
+                len(mlp_ratios) == len(depths) == len(sr_ratios))
         self.in_c = in_chans
         self.depths = depths
-        self.num_stages = num_stages
+        self.num_stages = len(depths)
         self.mask_ratio = mask_ratio
         self.use_shunted_head = use_shunted_head
         # --------------------------------------------------------------------------
@@ -92,7 +93,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                                                 sum(depths))]  # stochastic depth decay rule
         cur = 0
         next_embed_img_size = next_patch_H = next_patch_W = img_size
-        for i in range(num_stages):
+        for i in range(self.num_stages):
             if i == 0 and self.use_shunted_head:
                 # This is essentially a linear+patch embedding layer accroding to the authors:
                 # https://github.com/OliverRensu/Shunted-Transformer/issues/13
@@ -890,7 +891,6 @@ def mae_vit_huge_patch14_dec512d8b(**kwargs):
 def shunted_mae_vit_large_patch16_dec512d8b(**kwargs):
     model = MaskedAutoencoderShuntedViT(
         # Encoder
-        num_stages=4,
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
         attn_drop_rate=0.,
         drop_path_rate=0.,
