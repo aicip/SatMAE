@@ -20,9 +20,9 @@ from shunted import Block as ShuntedBlock, PatchEmbed as ShuntedPatchEmbed, Head
 # - [X] Create a function that generates the model name from iterable args
 # - [X] Compare and pick from the 3 available patch embedding methods
 # - [X] Try using the ShuntedHead in the first stage (not working for now)
-# - [ ] Try using encoder `pos_embed`, and `cls_token` in the Encoder (if possible)
-# - [ ] Add config option to use `ShuntedHead`, `pos_embed`, and `cls_token`
-# - [ ] Try many different configurations to make sure shapes always match
+# - [X] Try using encoder `pos_embed`, and `cls_token` in the Encoder (probably not compatible)
+# - [X] Add config option to use `ShuntedHead`, `pos_embed`, and `cls_token` (did only for shuntedhead)
+# - [X] Try many different configurations to make sure shapes always match
 # - [ ] Train for a few epochs to make sure it learns and compare
 # - [ ] Try creating an XFormer version using XFormer's `AttentionConfig, register_attention`
 # - [ ] Try creating a multi-stage decoder
@@ -54,7 +54,8 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                  num_stages=4,
                  num_conv=0,
                  mask_ratio=0.75,
-                 print_level=0,
+                 print_level=0, # for level>1 it ony runs one pass
+                 # Only defaults work
                  use_overlap_patch_embed=False,
                  use_shunted_head=False
                  ):
@@ -404,7 +405,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             self_norm = getattr(self, f"norm{i + 1}")
 
             # embed patches
-            if i != 0 or not self.use_shunted_head and self.print_level > 1:
+            if (i != 0 or not self.use_shunted_head) and self.print_level > 1:
                 print(
                     f"\tExpected patch_embed{i+1}.img_size: {self_patch_embed.img_size}")
             x, H, W = self_patch_embed(x)  # x.shape: (1, patches, embed_dim)
@@ -600,7 +601,7 @@ class MaskedAutoencoderViT(nn.Module):
         )  # fixed sin-cos embedding
 
         # self.blocks = nn.ModuleList([
-        #     Block(embed_dim, num_heads, mlp_ratio, qkv_bias=True, qk_scale=None, norm_layer=norm_layer)
+        #     TimmBlock(embed_dim, num_heads, mlp_ratio, qkv_bias=True, qk_scale=None, norm_layer=norm_layer)
         #     for i in range(depth)])
         self.blocks = nn.ModuleList(
             [
@@ -628,11 +629,11 @@ class MaskedAutoencoderViT(nn.Module):
         )  # fixed sin-cos embedding
 
         # self.decoder_blocks = nn.ModuleList([
-        #     Block(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, qk_scale=None, norm_layer=norm_layer)
+        #     TimmBlock(decoder_embed_dim, decoder_num_heads, mlp_ratio, qkv_bias=True, qk_scale=None, norm_layer=norm_layer)
         #     for i in range(decoder_depth)])
         self.decoder_blocks = nn.ModuleList(
             [
-                Block(
+                TimmBlock(
                     decoder_embed_dim,
                     decoder_num_heads,
                     mlp_ratio,
