@@ -37,7 +37,7 @@ class MaskedAutoencoderViT(nn.Module):
         residual_norm_style="post",
         residual_dropout=0.0,
         # Feedforward parameters
-        ffn_name="FusedMLP",  # Note: Only used if use_xformers=True currently
+        ffn_name="MLP",  # Note: Only used if use_xformers=True currently
         ffn_activation="gelu",  # Note: Only used if use_xformers=True currently
         ffn_ratio=4,
         ffn_dropout=0.0,
@@ -62,6 +62,20 @@ class MaskedAutoencoderViT(nn.Module):
         # --------------------------------------------------------------------------
         # MAE encoder specifics
         assert input_size % patch_size == 0
+        # if use_xformers is false,
+        # attention uses scaled_dot_product
+        # ffn_name uses MLP
+        # ffn_activation uses gelu
+        if not use_xformers:
+            assert (
+                attention == "scaled_dot_product"
+            ), f"Attention {attention} not supported with use_xformers=False, as Timm's implementation uses scaled_dot_product"
+            assert (
+                ffn_name == "MLP"
+            ), f"Feedforward {ffn_name} not supported with use_xformers=False, as Timm's implementation uses MLP"
+            assert (
+                ffn_activation == "gelu"
+            ), f"Feedforward activation {ffn_activation} not supported with use_xformers=False, as Timm's implementation uses gelu"
 
         self.patch_embed = PatchEmbed(input_size, patch_size, input_channels, dim_model)
         num_patches = self.patch_embed.num_patches

@@ -66,15 +66,23 @@ def get_args_parser():
     parser.add_argument(
         "--attention",
         default="scaled_dot_product",
+        # Options: "orthoformer", "random", "nystrom", "global", "local", "linformer", "pooling", "fourier_mix", "scaled_dot_product"
         type=str,
         help="attention name to use in transformer block",
     )
     parser.add_argument(
         "--ffn_name",
-        default="FusedMLP",
+        default="MLP",
+        # Options: "MLP", "FusedMLP"
         type=str,
         help="ffn name to use in transformer block",
     )
+    parser.add_argument(
+        "--use-xformers",
+        action="store_true",
+        help="Use xformers instead of timm for transformer",
+    )
+    parser.set_defaults(use_xformers=False)
 
     parser.add_argument(
         "--mask_ratio",
@@ -287,6 +295,7 @@ def main(args):
             norm_pix_loss=args.norm_pix_loss,
             attention=args.attention,
             ffn_name=args.ffn_name,
+            **args,
         )
 
     model.to(device)
