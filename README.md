@@ -85,19 +85,6 @@ The following measurements use `reversible=False` and `MLP` arguments in Transfo
   - 128x128 - `time: 0.1689 max mem: 6864`
     - mem/step ratio `1.208`
   - % difference: `(1.273 - 1.208) / 1.208 = 0.054`
-- nystrom
-  - TODO
-- orthoformer
-  - TODO
-- others:
-  - random
-  - favor
-  - global
-  - local
-  - pooling
-  - blocksparse
-  - lambda
-  - compositional
 
 The following measurements use `reversible=True` and `MLP` arguments in Transformer block.  
 This helps save memory but impacts step time negatively.

@@ -46,7 +46,9 @@ class MaskedAutoencoderViT(nn.Module):
         attention="scaled_dot_product",
         attn_dropout=0.0,
         # Other parameters
-        norm_layer=nn.LayerNorm,  # Note: Only used if use_xformers=False
+        norm_layer=partial(
+            nn.LayerNorm, eps=1e-6
+        ),  # Note: Only used if use_xformers=False
         norm_pix_loss=False,
         use_xformers=True,
     ):
@@ -389,7 +391,20 @@ class MaskedAutoencoderViT(nn.Module):
         return loss, pred, mask
 
 
-def mae_vit_base_patch16_dec512d8b(**kwargs):
+def mae_vit_small(**kwargs):
+    model = MaskedAutoencoderViT(
+        dim_model=256,
+        encoder_num_layers=8,
+        encoder_num_heads=8,
+        decoder_embed_dim=512,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        **kwargs,
+    )
+    return model
+
+
+def mae_vit_base(**kwargs):
     model = MaskedAutoencoderViT(
         dim_model=768,
         encoder_num_layers=12,
@@ -397,14 +412,12 @@ def mae_vit_base_patch16_dec512d8b(**kwargs):
         decoder_embed_dim=512,
         decoder_num_layers=8,
         decoder_num_heads=16,
-        ffn_ratio=4,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
         **kwargs,
     )
     return model
 
 
-def mae_vit_large_patch16_dec512d8b(**kwargs):
+def mae_vit_large(**kwargs):
     model = MaskedAutoencoderViT(
         dim_model=1024,
         encoder_num_layers=24,
@@ -412,14 +425,12 @@ def mae_vit_large_patch16_dec512d8b(**kwargs):
         decoder_embed_dim=512,
         decoder_num_layers=8,
         decoder_num_heads=16,
-        ffn_ratio=4,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
         **kwargs,
     )
     return model
 
 
-def mae_vit_huge_patch14_dec512d8b(**kwargs):
+def mae_vit_huge(**kwargs):
     model = MaskedAutoencoderViT(
         dim_model=1280,
         encoder_num_layers=32,
@@ -427,14 +438,6 @@ def mae_vit_huge_patch14_dec512d8b(**kwargs):
         decoder_embed_dim=512,
         decoder_num_layers=8,
         decoder_num_heads=16,
-        ffn_ratio=4,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
         **kwargs,
     )
     return model
-
-
-# set recommended archs
-mae_vit_base_patch16 = mae_vit_base_patch16_dec512d8b  # decoder: 512 dim, 8 blocks
-mae_vit_large_patch16 = mae_vit_large_patch16_dec512d8b  # decoder: 512 dim, 8 blocks
-mae_vit_huge_patch14 = mae_vit_huge_patch14_dec512d8b  # decoder: 512 dim, 8 blocks
