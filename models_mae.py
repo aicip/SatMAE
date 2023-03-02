@@ -23,9 +23,9 @@ class MaskedAutoencoderViT(nn.Module):
 
     def __init__(
         self,
-        img_size=128,
+        input_size=128,
+        input_channels=3,
         patch_size=16,
-        in_chans=3,
         dim_model=1024,
         # Encoder parameters
         encoder_num_layers=24,
@@ -51,17 +51,20 @@ class MaskedAutoencoderViT(nn.Module):
         ),  # Note: Only used if use_xformers=False
         norm_pix_loss=False,
         use_xformers=True,
+        **kwargs,
     ):
         super().__init__()
+        self.input_size = input_size
+        self.input_channels = input_channels
+        self.patch_size = patch_size
 
-        self.in_c = in_chans
         self.use_xformers = use_xformers
 
         # --------------------------------------------------------------------------
         # MAE encoder specifics
-        assert img_size % patch_size == 0
+        assert input_size % patch_size == 0
 
-        self.patch_embed = PatchEmbed(img_size, patch_size, in_chans, dim_model)
+        self.patch_embed = PatchEmbed(input_size, patch_size, input_channels, dim_model)
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, dim_model))
@@ -194,7 +197,7 @@ class MaskedAutoencoderViT(nn.Module):
 
         # decoder to patch
         self.decoder_pred = nn.Linear(
-            decoder_embed_dim, patch_size**2 * in_chans, bias=True
+            decoder_embed_dim, patch_size**2 * input_channels, bias=True
         )
         # --------------------------------------------------------------------------
 
@@ -372,7 +375,9 @@ class MaskedAutoencoderViT(nn.Module):
         # pred = self.unpatchify(pred, self.patch_embed.patch_size[0], self.in_c)
         # pred = self.patchify(pred[:, :3, :, :], self.patch_embed.patch_size[0], 3)
         # target = self.patchify(target, self.patch_embed.patch_size[0], 3)
-        target = self.patchify(imgs, self.patch_embed.patch_size[0], self.in_c)
+        target = self.patchify(
+            imgs, self.patch_embed.patch_size[0], self.input_channels
+        )
         if self.norm_pix_loss:
             mean = target.mean(dim=-1, keepdim=True)
             var = target.var(dim=-1, keepdim=True)
@@ -393,9 +398,9 @@ class MaskedAutoencoderViT(nn.Module):
 
 def mae_vit_small(**kwargs):
     model = MaskedAutoencoderViT(
-        dim_model=512,
+        dim_model=256,
         encoder_num_layers=12,
-        encoder_num_heads=12,
+        encoder_num_heads=16,
         decoder_embed_dim=512,
         decoder_num_layers=8,
         decoder_num_heads=16,
