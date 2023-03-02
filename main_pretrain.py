@@ -13,20 +13,19 @@ import time
 import traceback
 from pathlib import Path
 
+import models_mae
+import models_mae_group_channels
+import models_mae_temporal
 import numpy as np
 
 # assert timm.__version__ == "0.3.2"  # version check
 import timm.optim.optim_factory as optim_factory
 import torch
 import torch.backends.cudnn as cudnn
-from torch.utils.tensorboard import SummaryWriter
-
-import models_mae
-import models_mae_group_channels
-import models_mae_temporal
 import util.misc as misc
 import wandb
 from engine_pretrain import train_one_epoch, train_one_epoch_temporal
+from torch.utils.tensorboard import SummaryWriter
 from util.datasets import build_fmow_dataset
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 
@@ -166,11 +165,11 @@ def get_args_parser():
 
     parser.add_argument(
         "--output_dir",
-        default="./output_dir",
+        default="./outputs",
         help="path where to save, empty for no saving",
     )
     parser.add_argument(
-        "--log_dir", default="./output_dir", help="path where to tensorboard log"
+        "--log_dir", default="./logs", help="path where to tensorboard log"
     )
     parser.add_argument(
         "--device", default="cuda", help="device to use for training / testing"
