@@ -391,14 +391,14 @@ class MaskedAutoencoderViT(nn.Module):
         return loss, pred, mask
 
 
-def mae_vit_mini(**kwargs):
+def mae_vit_small(**kwargs):
     model = MaskedAutoencoderViT(
-        dim_model=128,
-        encoder_num_layers=4,
-        encoder_num_heads=8,
-        decoder_embed_dim=128,
-        decoder_num_layers=4,
-        decoder_num_heads=8,
+        dim_model=512,
+        encoder_num_layers=12,
+        encoder_num_heads=12,
+        decoder_embed_dim=512,
+        decoder_num_layers=8,
+        decoder_num_heads=16,
         **kwargs,
     )
     return model
