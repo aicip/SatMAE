@@ -92,7 +92,7 @@ def show_image(image, title=""):
     return
 
 
-def run_one_image(img, model, seed: Optional[int] = None):
+def run_one_image(img, model, seed: Optional[int] = None, figsize=24):
     if seed != None:
         torch.manual_seed(seed)
 
@@ -132,7 +132,7 @@ def run_one_image(img, model, seed: Optional[int] = None):
     im_paste = x * (1 - mask) + y * mask
 
     # make the plt figure larger
-    plt.rcParams["figure.figsize"] = [24, 24]
+    plt.rcParams["figure.figsize"] = [figsize, figsize]
 
     plt.subplot(1, 4, 1)
     show_image(x[0], "original")
