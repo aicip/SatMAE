@@ -34,23 +34,6 @@ pip install timm==0.4.12
 python -m xformers.info
 ```
 
-All of the following tests & metrics assume the following configuration:
-
-- Batch Size: 64 (5680 steps per epoch)
-
-TODO: look into Xformers 'visual' attention
-TODO: Test memory, speed, and accuracy of TF32
-
-```
-
-torch.backends.cuda.matmul.allow_tf32 = True
-
-```
-
-TODO: Test MLP vs FusedMLP in Xformers TransformerBlock
-
-TODO: Look into sliced attention (not sure if it's implemented in Xformers)
-
 ### Attention Types
 
 **Original SatMAE measurements**
@@ -99,15 +82,6 @@ This helps save memory but impacts step time negatively.
   - `time: 0.2279 max mem: 5205`
 - orthoformer
   - `time: 0.8514 max mem: 5163`
-- others:
-  - random
-  - favor
-  - global
-  - local
-  - pooling
-  - blocksparse
-  - lambda
-  - compositional
 
 ## Temporal SatMAE
 
