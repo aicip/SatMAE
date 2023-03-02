@@ -11,9 +11,8 @@ import torch
 import torch.nn as nn
 import xformers
 from timm.models.vision_transformer import Block, PatchEmbed
-from xformers.factory import xFormer, xFormerConfig
-
 from util.pos_embed import get_2d_sincos_pos_embed
+from xformers.factory import xFormer, xFormerConfig
 
 # xformers._is_functorch_available = True
 
@@ -396,11 +395,24 @@ class MaskedAutoencoderViT(nn.Module):
         return loss, pred, mask
 
 
+def mae_vit_mini(**kwargs):
+    model = MaskedAutoencoderViT(
+        dim_model=384,
+        encoder_num_layers=8,
+        encoder_num_heads=8,
+        decoder_embed_dim=512,
+        decoder_num_layers=8,
+        decoder_num_heads=16,
+        **kwargs,
+    )
+    return model
+
+
 def mae_vit_small(**kwargs):
     model = MaskedAutoencoderViT(
-        dim_model=256,
+        dim_model=512,
         encoder_num_layers=12,
-        encoder_num_heads=16,
+        encoder_num_heads=12,
         decoder_embed_dim=512,
         decoder_num_layers=8,
         decoder_num_heads=16,
