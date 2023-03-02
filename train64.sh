@@ -8,7 +8,7 @@ BATCH_SIZE=768
 INPUT_SIZE=64
 PATCH_SIZE=8
 
-MODEL="mae_vit_large"
+MODEL="mae_vit_base"
 FFN_NAME="FusedMLP"
 ATTENTION="scaled_dot_product"
 
