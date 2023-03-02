@@ -24,21 +24,21 @@ class MaskedAutoencoderViT(nn.Module):
         self,
         input_size=128,
         input_channels=3,
-        patch_size=16,
+        patch_size=16,  # Must be multiple of input_size
         dim_model=1024,
         # Encoder parameters
         encoder_num_layers=24,
-        encoder_num_heads=16,
+        encoder_num_heads=16,  # Must be multiple of dim_model
         # Decoder parameters
         decoder_embed_dim=512,
         decoder_num_layers=8,
-        decoder_num_heads=16,
+        decoder_num_heads=16,  # Must be multiple of decoder_embed_dim
         # Residual parameters
         residual_norm_style="post",
         residual_dropout=0.0,
         # Feedforward parameters
-        ffn_name="MLP",  # Note: Only used if use_xformers=True currently
-        ffn_activation="gelu",  # Note: Only used if use_xformers=True currently
+        ffn_name="MLP",  # Note: If use_xformers=False, only MLP is supported
+        ffn_activation="gelu",  # Note: if use_xformers=False, only gelu is supported
         ffn_ratio=4,
         ffn_dropout=0.0,
         # Attention parameters
