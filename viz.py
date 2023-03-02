@@ -99,8 +99,8 @@ def run_one_image(img, model, seed: Optional[int] = None):
     patch_size = model.patch_size
     channels = model.input_channels
 
-    print("Patch Size:", patch_size)
-    print("Channels:", channels)
+    # print("Patch Size:", patch_size)
+    # print("Channels:", channels)
 
     x = torch.tensor(img)
 
