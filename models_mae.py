@@ -42,14 +42,14 @@ class MaskedAutoencoderViT(nn.Module):
         ffn_ratio=4,
         ffn_dropout=0.0,
         # Attention parameters
-        attention="scaled_dot_product",
+        attn_name="scaled_dot_product",
         attn_dropout=0.0,
         # Other parameters
         norm_layer=partial(
             nn.LayerNorm, eps=1e-6
         ),  # Note: Only used if use_xformers=False
         norm_pix_loss=False,
-        use_xformers=True,
+        use_xformers=False,
         **kwargs,
     ):
         super().__init__()
@@ -68,8 +68,8 @@ class MaskedAutoencoderViT(nn.Module):
         # ffn_activation uses gelu
         if not use_xformers:
             assert (
-                attention == "scaled_dot_product"
-            ), f"Attention {attention} not supported with use_xformers=False, as Timm's implementation uses scaled_dot_product"
+                attn_name == "scaled_dot_product"
+            ), f"Attention {attn_name} not supported with use_xformers=False, as Timm's implementation uses scaled_dot_product"
             assert (
                 ffn_name == "MLP"
             ), f"Feedforward {ffn_name} not supported with use_xformers=False, as Timm's implementation uses MLP"
@@ -108,7 +108,7 @@ class MaskedAutoencoderViT(nn.Module):
                             "num_heads": encoder_num_heads,
                             "residual_dropout": residual_dropout,
                             "attention": {
-                                "name": attention,
+                                "name": attn_name,
                                 "dropout": attn_dropout,
                                 "seq_len": num_patches + 1,  # This adds the mask token
                                 "causal": False,
@@ -139,7 +139,7 @@ class MaskedAutoencoderViT(nn.Module):
                             "num_heads": decoder_num_heads,
                             "residual_dropout": residual_dropout,
                             "attention": {
-                                "name": attention,
+                                "name": attn_name,
                                 "dropout": attn_dropout,
                                 "seq_len": num_patches + 1,  # This adds the mask token
                                 "causal": False,

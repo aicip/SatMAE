@@ -55,7 +55,7 @@ def get_args_parser():
     )
     parser.add_argument(
         "--model",
-        default="mae_vit_base_patch16",
+        default="mae_vit_base",
         type=str,
         metavar="MODEL",
         help="Name of model to train",
@@ -64,7 +64,7 @@ def get_args_parser():
     parser.add_argument("--input_size", default=128, type=int, help="images input size")
     parser.add_argument("--patch_size", default=16, type=int, help="images input size")
     parser.add_argument(
-        "--attention",
+        "--attn_name",
         default="scaled_dot_product",
         # Options: "orthoformer", "random", "nystrom", "global", "local", "linformer", "pooling", "fourier_mix", "scaled_dot_product"
         type=str,
@@ -293,8 +293,6 @@ def main(args):
             patch_size=args.patch_size,
             in_chans=dataset_train.in_c,
             norm_pix_loss=args.norm_pix_loss,
-            attention=args.attention,
-            ffn_name=args.ffn_name,
             **args,
         )
 
