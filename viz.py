@@ -3,6 +3,7 @@ from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
+import skimage
 import torch
 from PIL import Image
 
@@ -128,8 +129,9 @@ def run_one_image(img, model, seed: Optional[int] = None, figsize=24):
     # masked image
     im_masked = x * (1 - mask)
 
+    y_mask = y * mask
     # MAE reconstruction pasted with visible patches
-    im_paste = x * (1 - mask) + y * mask
+    im_paste = im_masked + y_mask
 
     # make the plt figure larger
     plt.rcParams["figure.figsize"] = [figsize, figsize]
