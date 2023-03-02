@@ -23,7 +23,7 @@ class MaskedAutoencoderViT(nn.Module):
 
     def __init__(
         self,
-        img_size=224,
+        img_size=128,
         patch_size=16,
         in_chans=3,
         dim_model=1024,
@@ -38,12 +38,12 @@ class MaskedAutoencoderViT(nn.Module):
         residual_norm_style="post",
         residual_dropout=0.0,
         # Feedforward parameters
-        ffn_name="MLP",  # Note: Only used if use_xformers=True currently
+        ffn_name="FusedMLP",  # Note: Only used if use_xformers=True currently
         ffn_activation="gelu",  # Note: Only used if use_xformers=True currently
-        ffn_ratio=4.0,
+        ffn_ratio=4,
         ffn_dropout=0.0,
         # Attention parameters
-        attention=None,  # Passed from pretrain script
+        attention="scaled_dot_product",
         attn_dropout=0.0,
         # Other parameters
         norm_layer=nn.LayerNorm,  # Note: Only used if use_xformers=False

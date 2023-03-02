@@ -62,7 +62,7 @@ def get_args_parser():
         help="Name of model to train",
     )
 
-    parser.add_argument("--input_size", default=224, type=int, help="images input size")
+    parser.add_argument("--input_size", default=128, type=int, help="images input size")
     parser.add_argument("--patch_size", default=16, type=int, help="images input size")
     parser.add_argument(
         "--attention",
@@ -70,6 +70,13 @@ def get_args_parser():
         type=str,
         help="attention name to use in transformer block",
     )
+    parser.add_argument(
+        "--ffn_name",
+        default="FusedMLP",
+        type=str,
+        help="ffn name to use in transformer block",
+    )
+
     parser.add_argument(
         "--mask_ratio",
         default=0.75,
@@ -281,6 +288,7 @@ def main(args):
             in_chans=dataset_train.in_c,
             norm_pix_loss=args.norm_pix_loss,
             attention=args.attention,
+            ffn_name=args.ffn_name,
         )
 
     model.to(device)
