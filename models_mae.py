@@ -425,8 +425,8 @@ def mae_vit_mini(**kwargs):
 def mae_vit_small(**kwargs):
     model = MaskedAutoencoderViT(
         dim_model=512,
-        encoder_num_layers=12,
-        encoder_num_heads=12,
+        encoder_num_layers=10,
+        encoder_num_heads=8,
         decoder_embed_dim=512,
         decoder_num_layers=8,
         decoder_num_heads=16,
