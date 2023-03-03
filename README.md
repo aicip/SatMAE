@@ -30,12 +30,12 @@ pip install timm==0.4.12
 
 ### Number of Parameters
 
-- `mae_vit_base` - `scaled_dot_product`:
-  - Timm: `111,655,680`
-  - Xformers: `111,653,120`
-  - Thus they are similar enough - won't compare the rest
-- `mae_vit_large` - `scaled_dot_product`:
-  - Timm: `329,239,296`
+- Xformers and Timm implementations are roughly the same in terms of number of parameters, so assume the following numbers are the same for both implementations.
+- Attention: `scaled_dot_product` & MLP: `MLP` (Not `FusedMLP`)
+  - `mae_vit_mini`: `40,303,872`
+  - `mae_vit_small`: `57,796,352`
+  - `mae_vit_base`: `111,655,680`
+  - `mae_vit_large`: `329,239,296`
 
 ## Xformers Implementation Notes
 
