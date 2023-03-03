@@ -28,7 +28,7 @@ Requires `timm` library version 0.4.12 due to changes in later versions.
 pip install timm==0.4.12
 ```
 
-### Number of Parameters
+## Number of Parameters
 
 - Xformers and Timm implementations are roughly the same in terms of number of parameters, so assume the following numbers are the same for both implementations.
 - Attention: `scaled_dot_product` & MLP: `MLP` (Not `FusedMLP`)
