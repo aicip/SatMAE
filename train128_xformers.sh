@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 
 DEVICE="cuda:0"
 
