@@ -36,6 +36,8 @@ pip install timm==0.4.12
   - `mae_vit_small`: `57,796,352`
   - `mae_vit_base`: `111,655,680`
   - `mae_vit_large`: `329,239,296`
+- Attention: `fourier_mix`
+  - `mae_vit_base`: `84,088,064`
 
 ## Xformers Implementation Notes
 
