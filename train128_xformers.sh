@@ -11,7 +11,7 @@ FFN_NAME="MLP"
 
 ATTENTION=$1
 if [ -z "$ATTENTION" ]; then
-    echo "Usage: $0 <attention>"
+    echo "Usage: $0 <attention> [additional flags]"
     echo "Attentions: scaled_dot_product, linformer, orthoformer, random, local, nystrom, fourier_mix"
     exit 1
 fi
