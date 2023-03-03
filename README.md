@@ -28,6 +28,15 @@ Requires `timm` library version 0.4.12 due to changes in later versions.
 pip install timm==0.4.12
 ```
 
+### Number of Parameters
+
+- `mae_vit_base` - `scaled_dot_product`:
+  - Timm: `111,655,680`
+  - Xformers: `111,653,120`
+  - Thus they are similar enough - won't compare the rest
+- `mae_vit_large` - `scaled_dot_product`:
+  - Timm: `329,239,296`
+
 ## Xformers Implementation Notes
 
 ```
