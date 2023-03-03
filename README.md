@@ -38,6 +38,14 @@ pip install timm==0.4.12
   - `mae_vit_large`: `329,239,296`
 - Attention: `fourier_mix`
   - `mae_vit_base`: `84,088,064`
+- Attention: `local`
+  - `mae_vit_base`: `111,653,120`
+- Attention: `orthoformer`
+  - `mae_vit_base`: `111,653,120`
+- Attention: `random`
+  - `mae_vit_base`: `111,653,120`
+- Attention: `linformer`
+  - `mae_vit_base`: `111,694,720`
 
 ## Xformers Implementation Notes
 
