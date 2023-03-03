@@ -11,8 +11,9 @@ import torch
 import torch.nn as nn
 import xformers
 from timm.models.vision_transformer import Block, PatchEmbed
-from util.pos_embed import get_2d_sincos_pos_embed
 from xformers.factory import xFormer, xFormerConfig
+
+from util.pos_embed import get_2d_sincos_pos_embed
 
 # xformers._is_functorch_available = True
 
@@ -62,10 +63,7 @@ class MaskedAutoencoderViT(nn.Module):
         # --------------------------------------------------------------------------
         # MAE encoder specifics
         assert input_size % patch_size == 0
-        # if use_xformers is false,
-        # attention uses scaled_dot_product
-        # ffn_name uses MLP
-        # ffn_activation uses gelu
+
         if not use_xformers:
             assert (
                 attn_name == "scaled_dot_product"
