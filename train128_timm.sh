@@ -1,6 +1,6 @@
 #!/bin/zsh
 
-DEVICE="cuda:0"
+DEVICE="cuda:2"
 
 EPOCHS=400
 BATCH_SIZE=64
