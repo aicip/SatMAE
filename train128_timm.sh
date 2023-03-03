@@ -1,7 +1,5 @@
 #!/bin/bash
 
-DEVICE="cuda:0"
-
 EPOCHS=200
 BATCH_SIZE=256
 
@@ -20,6 +18,6 @@ OUT_DIR_BASE="../Model_Saving"
 OUT_DIR="${OUT_DIR_BASE}/out_${MODEL}_timm_${ATTENTION}_${FFN_NAME}_i${INPUT_SIZE}_p${PATCH_SIZE}_b${BATCH_SIZE}_e${EPOCHS}"
 
 # Note: If you want to use additional flags, pass them when running the script.
-# Example: ./trainX.sh --wandb satmae
+# Example: ./trainX.sh --wandb satmae --device "cuda:0"
 
-python3 main_pretrain.py --device "$DEVICE" --train_path "$IN_PATH" --output_dir "$OUT_DIR" --model="$MODEL" --input_size "$INPUT_SIZE" --patch_size "$PATCH_SIZE" --batch_size "$BATCH_SIZE" --epochs "$EPOCHS" --attn_name "$ATTENTION" --ffn_name="$FFN_NAME" $@
+python3 main_pretrain.py --train_path "$IN_PATH" --output_dir "$OUT_DIR" --model="$MODEL" --input_size "$INPUT_SIZE" --patch_size "$PATCH_SIZE" --batch_size "$BATCH_SIZE" --epochs "$EPOCHS" --attn_name "$ATTENTION" --ffn_name="$FFN_NAME" $@
