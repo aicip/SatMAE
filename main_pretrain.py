@@ -19,13 +19,13 @@ import numpy as np
 import timm.optim.optim_factory as optim_factory
 import torch
 import torch.backends.cudnn as cudnn
-import wandb
 from torch.utils.tensorboard import SummaryWriter
 
 import models_mae
 import models_mae_group_channels
 import models_mae_temporal
 import util.misc as misc
+import wandb
 from engine_pretrain import train_one_epoch, train_one_epoch_temporal
 from util.datasets import build_fmow_dataset
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
@@ -103,7 +103,7 @@ def get_args_parser():
         action="store_true",
         help="Use (per-patch) normalized pixels as targets for computing loss",
     )
-    parser.set_defaults(norm_pix_loss=True)
+    parser.set_defaults(norm_pix_loss=False)
 
     # Optimizer parameters
     parser.add_argument(
