@@ -84,16 +84,17 @@ def prepare_image(image_uri, model):
     return img
 
 
-def show_image(image, title=""):
+def show_image(image, ax=None, title=""):
     # image is [H, W, 3]
     assert image.shape[2] == 3
-    plt.imshow(torch.clip((image * image_std + image_mean) * 255, 0, 255).int())
-    plt.title(title, fontsize=16)
-    plt.axis("off")
+
+    ax.imshow(torch.clip((image * image_std + image_mean) * 255, 0, 255).int())
+    ax.set_title(title)
+    ax.axis("off")
     return
 
 
-def run_one_image(img, model, seed: Optional[int] = None, figsize=24):
+def run_one_image(img, model, seed: Optional[int] = None):
     if seed is not None:
         torch.manual_seed(seed)
 
@@ -133,19 +134,4 @@ def run_one_image(img, model, seed: Optional[int] = None, figsize=24):
     # MAE reconstruction pasted with visible patches
     im_paste = im_masked + y_mask
 
-    # make the plt figure larger
-    plt.rcParams["figure.figsize"] = [figsize, figsize]
-
-    plt.subplot(1, 4, 1)
-    show_image(x[0], "original")
-
-    plt.subplot(1, 4, 2)
-    show_image(im_masked[0], "masked")
-
-    plt.subplot(1, 4, 3)
-    show_image(y[0], "reconstruction")
-
-    plt.subplot(1, 4, 4)
-    show_image(im_paste[0], "reconstruction + visible")
-
-    plt.show()
+    return x, im_masked, y, im_paste
