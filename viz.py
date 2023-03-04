@@ -94,7 +94,7 @@ def show_image(image, title=""):
 
 
 def run_one_image(img, model, seed: Optional[int] = None, figsize=24):
-    if seed != None:
+    if seed is not None:
         torch.manual_seed(seed)
 
     patch_size = model.patch_size
