@@ -122,10 +122,20 @@ class SatelliteDataset(Dataset):
                     antialias=True,
                 ),  # 3 is bicubic
             )
-            t.append(transforms.RandomHorizontalFlip())
+            ###########################################
+            # TODO: Check if these are useful in our case
+            # t.append(transforms.RandomHorizontalFlip())
+            # t.append(transforms.RandomVerticalFlip())
+            # t.append(
+            #     transforms.RandomApply(
+            #         [transforms.ColorJitter(0.2, 0.2, 0.2, 0.2)], p=0.5
+            #     )
+            # )
+            ###########################################
             return transforms.Compose(t)
 
         # eval transform
+        # TODO: These may need adjustment
         if input_size <= 224:
             crop_pct = 224 / 256
         else:
