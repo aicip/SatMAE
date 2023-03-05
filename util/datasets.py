@@ -109,6 +109,8 @@ class SatelliteDataset(Dataset):
 
         # train transform
         interpol_mode = transforms.InterpolationMode.BICUBIC
+        # TODO: The following paper proposes using bilinear instead of bicubic for interpolation mode
+        # https://arxiv.org/pdf/1511.08861.pdf
 
         t = []
         if is_train:
@@ -116,13 +118,26 @@ class SatelliteDataset(Dataset):
             t.append(transforms.Normalize(mean, std))
             t.append(
                 transforms.RandomResizedCrop(
-                    input_size, scale=(0.2, 1.0), interpolation=interpol_mode
+                    input_size,
+                    scale=(0.2, 1.0),
+                    interpolation=interpol_mode,
+                    antialias=True,
                 ),  # 3 is bicubic
             )
-            t.append(transforms.RandomHorizontalFlip())
+            ###########################################
+            # TODO: Check if these are useful in our case
+            # t.append(transforms.RandomHorizontalFlip())
+            # t.append(transforms.RandomVerticalFlip())
+            # t.append(
+            #     transforms.RandomApply(
+            #         [transforms.ColorJitter(0.2, 0.2, 0.2, 0.2)], p=0.5
+            #     )
+            # )
+            ###########################################
             return transforms.Compose(t)
 
         # eval transform
+        # TODO: These may need adjustment
         if input_size <= 224:
             crop_pct = 224 / 256
         else:
@@ -133,7 +148,7 @@ class SatelliteDataset(Dataset):
         t.append(transforms.Normalize(mean, std))
         t.append(
             transforms.Resize(
-                size, interpolation=interpol_mode
+                size, interpolation=interpol_mode, antialias=True
             ),  # to maintain same ratio w.r.t. 224 images
         )
         t.append(transforms.CenterCrop(input_size))

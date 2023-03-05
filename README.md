@@ -20,6 +20,88 @@ Authors:
 
 <sub><sup>1</sup> Equal contribution, order determined via coin flip.</sub>
 
+## Note
+
+Requires `timm` library version 0.4.12 due to changes in later versions.
+
+```
+pip install timm==0.4.12
+```
+
+## Number of Parameters
+
+- Attention: `scaled_dot_product` & MLP Type: `MLP` (Not `FusedMLP`)
+  - `mae_vit_mini`: `40,303,872`
+  - `mae_vit_small`: `57,796,352`
+  - `mae_vit_base`: `111,655,680`
+  - `mae_vit_large`: `329,239,296`
+  - Xformers and Timm implementations are roughly the same in terms of number of parameters, so assume the following numbers are the same for both implementations.
+- Attention: `fourier_mix`
+  - `mae_vit_base`: `84,088,064`
+- Attention: `local`
+  - `mae_vit_base`: `111,653,120`
+- Attention: `orthoformer`
+  - `mae_vit_base`: `111,653,120`
+- Attention: `random`
+  - `mae_vit_base`: `111,653,120`
+- Attention: `linformer`
+  - `mae_vit_base`: `111,694,720`
+
+## Xformers Implementation Notes
+
+```
+python -m xformers.info
+```
+
+### Attention Types
+
+**Original SatMAE measurements**
+
+- `time: 0.1425 max mem: 5873`
+
+**Modified SatMAE w/ Xformers measurements**
+
+Size Difference Ratio: `128 / 112 = 1.14285714286`
+
+The following measurements use `reversible=False` and `MLP` arguments in Transformer block (to match original SatMAE config)
+
+- fourier_mix
+  - 112x112 - `time: 0.1071 max mem: 4352`
+    - mem/step ratio: `0.766`
+    - scaled to 128: `0.766 * 1.14285714286 = 0.875`
+  - 128x128 - `time: 0.1072 max mem: 4651`
+    - mem/step ratio: `0.819`
+  - % difference: `(0.875 - 0.819) / 0.819 = 0.068`
+- scaled_dot_product
+  - 112x112 - `time: 0.1416 max mem: 5888`
+    - mem/step ratio: `1.037`
+    - scaled to 128: `1.037 * 1.14285714286 = 1.185`
+    - matches original SatMAE
+  - 128x128 - `time: 0.1519 max mem: 6346`
+    - mem/step ratio: `1.117`
+  - % difference: `(1.185 - 1.117) / 1.117 = 0.061`
+- linformer
+  - 112x112 - `time: 0.1765 max mem: 6326`
+    - mem/step ratio: `1.114`
+    - scaled to 128: `1.114 * 1.14285714286 = 1.273`
+  - 128x128 - `time: 0.1689 max mem: 6864`
+    - mem/step ratio `1.208`
+  - % difference: `(1.273 - 1.208) / 1.208 = 0.054`
+
+The following measurements use `reversible=True` and `MLP` arguments in Transformer block.  
+This helps save memory but impacts step time negatively.
+
+- fourier_mix
+  - `time: 0.1458 max mem: 3893`
+- nystrom
+  - `time: 0.2012 max mem: 5148`
+- scaled_dot_product
+  - `time: 0.2298 max mem: 5148`
+- linformer
+  - `time: 0.2279 max mem: 5205`
+- orthoformer
+  - `time: 0.8514 max mem: 5163`
+
 ## Temporal SatMAE
 
 Pre-training and finetuning on fMoW-Temporal are MEMORY-HEAVY.
@@ -33,6 +115,7 @@ You can download the fMoW dataset [here](https://github.com/fMoW/dataset). Then 
 After you download the dataset and metadata files, your directory should look like:
 
 ```
+
 <PATH_TO_DATASET_ROOT_FOLDER>
 --- train_62classes.csv
 --- val_62classes.csv
@@ -43,6 +126,7 @@ After you download the dataset and metadata files, your directory should look li
 ------- val
 ---------- airport
 ---------- ...
+
 ```
 
 ### Pretraining
