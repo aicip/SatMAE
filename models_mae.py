@@ -52,12 +52,14 @@ class MaskedAutoencoderViT(nn.Module):
         ),  # Note: Only used if use_xformers=False
         norm_pix_loss=False,
         use_xformers=False,
+        loss="mse",
         **kwargs,
     ):
         super().__init__()
         self.input_size = input_size
         self.input_channels = input_channels
         self.patch_size = patch_size
+        self.loss = loss.lower()
 
         self.use_xformers = use_xformers
 
@@ -453,7 +455,12 @@ class MaskedAutoencoderViT(nn.Module):
         latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
         # TODO: Add flag for loss function
-        loss = self.forward_loss_mse(imgs, pred, mask)
+        if self.loss == "mse":
+            loss = self.forward_loss_mse(imgs, pred, mask)
+        elif self.loss == "l1":
+            loss = self.forward_loss_l1(imgs, pred, mask)
+        else:
+            raise ValueError(f"Loss type {self.loss} not supported.")
         # loss = self.forward_loss_l1(imgs, pred, mask)
         return loss, pred, mask
 

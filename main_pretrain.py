@@ -97,6 +97,13 @@ def get_args_parser():
         default=False,
         help="Whether to mask all channels of a spatial location. Only for indp c model",
     )
+    # arg for loss, default is mae
+    parser.add_argument(
+        "--loss",
+        default="mse",
+        type=str,
+        help="Loss function to use (mse or mae)",
+    )
 
     parser.add_argument(
         "--norm_pix_loss",
