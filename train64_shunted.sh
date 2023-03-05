@@ -1,17 +1,18 @@
 #!/bin/zsh
 
-DEVICE="cuda:1"
+DEVICE="cuda:3"
 
 EPOCHS=200
 
 INPUT_SIZE=64
-BATCH_SIZE=8
-PATCH_SIZES="2|2|2|2"
-EMBED_DIMS='64|128|256|512'
-DEPTHS='1|2|4|1'
-NUM_HEADS='2|4|8|16'
-MLP_RATIOS='8|8|4|4'
-SR_RATIOS='2|2|2|2'
+BATCH_SIZE=64
+PATCH_SIZES="4|4"
+EMBED_DIMS='256|512'
+DEPTHS='6|12'
+NUM_HEADS='8|16'
+MLP_RATIOS='4|4'
+SR_RATIOS='2|2'
+MASK_RATIO='0.60'
 
 PRINT_LEVEL=1
 ATTENTION="shunted"
@@ -28,7 +29,8 @@ IN_PATH="${IN_PATH_BASE}/fmow-rgb-preproc/train_${INPUT_SIZE}.csv"
 OUT_DIR_BASE="/data2/HDD_16TB/ICCV/Model_Saving"
 # Data path for com2044
 # OUT_DIR_BASE="/mnt/com1822_HDD_16TB/ICCV/Model_Saving"
-OUT_DIR="${OUT_DIR_BASE}/out_i${INPUT_SIZE}_p${PATCH_SIZES}_e${EMBED_DIMS}_d${DEPTHS}_h${NUM_HEADS}_mlp${MLP_RATIOS}_sr${SR_RATIOS}_e${EPOCHS}_${ATTENTION}"
+
+OUT_DIR="${OUT_DIR_BASE}/out_i${INPUT_SIZE}_p${PATCH_SIZES}_e${EMBED_DIMS}_d${DEPTHS}_h${NUM_HEADS}_mlp${MLP_RATIOS}_sr${SR_RATIOS}_e${EPOCHS}_${ATTENTION}_ratio{MASK_RATIO}"
 
 WANDB="satmae"
 
@@ -48,4 +50,5 @@ python3 main_pretrain.py \
 --attention "${ATTENTION}" \
 --print_level "${PRINT_LEVEL}" \
 --model "${MODEL_NAME}" \
+--mask_ratio "${MASK_RATIO}" \
 --wandb "${WANDB}" $@
