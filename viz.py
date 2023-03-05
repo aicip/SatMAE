@@ -103,7 +103,6 @@ def add_noise(image, noise_type="gaussian", noise_param=0.1):
 def show_image(image, ax=None, title=""):
     # image is [H, W, 3]
     assert image.shape[2] == 3
-
     ax.imshow(torch.clip((image * image_std + image_mean) * 255, 0, 255).int())
     ax.set_title(title)
     ax.axis("off")
