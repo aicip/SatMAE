@@ -323,6 +323,7 @@ class MaskedAutoencoderViT(nn.Module):
         return x_masked, mask, ids_restore
 
     def forward_encoder(self, x, mask_ratio):
+        # TODO: Test out adding random noise to the input
         x = self.patch_embed(x)
 
         # add pos embed w/o cls token
@@ -423,9 +424,41 @@ class MaskedAutoencoderViT(nn.Module):
 
         return loss
 
+    def forward_loss_kl(self, imgs, pred, latent, mask):
+        """
+        imgs: [N, 3, H, W]
+        pred: [N, L, p*p*3]
+        mask: [N, L], 0 is keep, 1 is remove,
+        """
+        target = self.patchify(
+            imgs, self.patch_embed.patch_size[0], self.input_channels
+        )
+        if self.norm_pix_loss:
+            mean = target.mean(dim=-1, keepdim=True)
+            var = target.var(dim=-1, keepdim=True)
+            target = (target - mean) / (var + 1.0e-6) ** 0.5
+
+        # Reconstruction loss
+        BCE = F.binary_cross_entropy(pred, target, reduction="none")
+        BCE = BCE.mean(dim=-1)  # [N, L], mean loss per patch
+
+        # KL divergence
+        # The KL divergence is the difference between the normal distribution of the latent space and the standard normal distribution
+        mu = latent.mean(dim=0)
+        logvar = latent.var(dim=0).log()
+        KL = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+        # Use the mask to compute the loss from the removed patches
+        loss = (BCE * mask).sum() / mask.sum()  # mean loss on removed patches
+        # Add the KL divergence to the loss
+        loss += KL
+
+        return loss
+
     def forward(self, imgs, mask_ratio=0.75):
         latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
+        # TODO: Add flag for loss function
         loss = self.forward_loss_mse(imgs, pred, mask)
         # loss = self.forward_loss_cross_entropy(imgs, pred, mask)
         return loss, pred, mask
