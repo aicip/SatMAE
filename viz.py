@@ -66,13 +66,19 @@ def prepare_model(
     return model
 
 
-def prepare_image(image_uri, model):
+def prepare_image(image_uri, model, resample=None):
+    """
+    :param resample: An optional resampling filter.  This can be
+           one `Resampling.NEAREST`, `Resampling.BOX`,
+           `Resampling.BILINEAR`, `Resampling.HAMMING`,
+           `Resampling.BICUBIC`, `Resampling.LANCZOS`.
+    """
     img = Image.open(image_uri)
 
     img_size = model.input_size
     img_chans = model.input_channels
 
-    img = img.resize((img_size, img_size))
+    img = img.resize((img_size, img_size), resample=resample)
     img = np.array(img) / 255.0
 
     assert img.shape == (img_size, img_size, img_chans)

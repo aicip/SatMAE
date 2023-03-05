@@ -109,6 +109,8 @@ class SatelliteDataset(Dataset):
 
         # train transform
         interpol_mode = transforms.InterpolationMode.BICUBIC
+        # TODO: The following paper proposes using bilinear instead of bicubic for interpolation mode
+        # https://arxiv.org/pdf/1511.08861.pdf
 
         t = []
         if is_train:
