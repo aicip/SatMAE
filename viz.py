@@ -77,11 +77,27 @@ def prepare_image(image_uri, model):
 
     assert img.shape == (img_size, img_size, img_chans)
 
-    # normalize by ImageNet mean and std
+    # normalize by dataset mean and std
     img = img - image_mean
     img = img / image_std
 
     return img
+
+
+def add_noise(image, noise_type="gaussian", noise_param=0.1):
+    if noise_type == "gaussian":
+        noise = np.random.normal(0, noise_param, image.shape)
+    elif noise_type == "poisson":
+        noise = np.random.poisson(noise_param, image.shape)
+    elif noise_type == "s&p":
+        noise = np.random.binomial(1, noise_param, image.shape)
+    elif noise_type == "speckle":
+        noise = np.random.normal(0, noise_param, image.shape)
+    else:
+        raise ValueError("Invalid noise type")
+
+    noisy_image = image + noise
+    return noisy_image
 
 
 def show_image(image, ax=None, title=""):
