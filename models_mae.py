@@ -37,7 +37,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                  patch_sizes=None,
                  input_channels=3,
                  decoder_embed_dim=None,
-                 decoder_depth=None,
+                 decoder_num_layers=None,
                  decoder_num_heads=None,
                  norm_layer=nn.LayerNorm,
                  norm_pix_loss=False,
@@ -66,13 +66,13 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             print(f"img_size: {input_size}")
             print(f"patch_sizes: {patch_sizes}")
             print(f"input_channels: {input_channels}")
-            print(f"embed_dims: {dim_model}")
-            print(f"num_heads: {encoder_num_heads}")
+            print(f"dim_model: {dim_model}")
+            print(f"encoder_num_heads: {encoder_num_heads}")
+            print(f"encoder_num_layers: {encoder_num_layers}")
             print(f"mlp_ratios: {mlp_ratios}")
             print(f"decoder_embed_dim: {decoder_embed_dim}")
-            print(f"decoder_depth: {decoder_depth}")
+            print(f"decoder_num_layers: {decoder_num_layers}")
             print(f"decoder_num_heads: {decoder_num_heads}")
-            print(f"depths: {encoder_num_layers}")
             print(f"sr_ratios: {sr_ratios}")
             print(f"num_conv: {num_conv}")
             print(f"mask_ratio: {mask_ratio}")
@@ -227,7 +227,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                     qkv_bias=True,
                     norm_layer=norm_layer,
                 )
-                for _ in range(decoder_depth)
+                for _ in range(decoder_num_layers)
             ]
         )
 
@@ -929,6 +929,20 @@ def mae_vit_huge(**kwargs):
     return model
 
 # Shunted Transformer
+def shunted_mae_vit_noargs(**kwargs):
+    model = MaskedAutoencoderShuntedViT(
+        # Encoder
+        attn_drop_rate=0.,
+        drop_path_rate=0.,
+        drop_rate=0.,
+        num_conv=0,
+        # Decoder
+        decoder_embed_dim=512,
+        decoder_num_layers=8,
+        decoder_num_heads=16,
+        **kwargs
+    )
+    return model
 
 def shunted_2s_mae_vit_tiny(**kwargs):
     model = MaskedAutoencoderShuntedViT(
@@ -941,9 +955,9 @@ def shunted_2s_mae_vit_tiny(**kwargs):
         drop_rate=0.,
         num_conv=0,
         # Decoder
-        decoder_embed_dim=512,
-        decoder_num_layers=8,
-        decoder_num_heads=16,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
         **kwargs
     )
     return model
@@ -992,9 +1006,9 @@ def shunted_2s_mae_vit_small(**kwargs):
 def shunted_2s_mae_vit_base(**kwargs):
     model = MaskedAutoencoderViT(
         # Encoder
-        dim_model=[256, 512],
-        encoder_num_layers=[2, 4],
-        encoder_num_heads=[2, 4],
+        dim_model=[512, 768],
+        encoder_num_layers=[4, 8],
+        encoder_num_heads=[4, 8],
         mlp_ratios=[4, 4],
         sr_ratios=[2, 2],
         attn_drop_rate=0.,

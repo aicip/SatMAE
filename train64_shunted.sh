@@ -10,6 +10,7 @@ BATCH_SIZE=64
 PATCH_SIZES="4|4"
 # MASK_RATIO='0.60'
 MASK_RATIO='0.75'
+LR=0.0001
 
 PRINT_LEVEL=1
 ATTENTION="shunted"
@@ -46,5 +47,6 @@ python3 main_pretrain.py \
 --attention "${ATTENTION}" \
 --print_level "${PRINT_LEVEL}" \
 --model "${MODEL_NAME}" \
+--lr "${LR}" \
 --mask_ratio "${MASK_RATIO}" \
 --wandb "${WANDB}" $@

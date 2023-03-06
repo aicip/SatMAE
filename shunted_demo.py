@@ -190,6 +190,8 @@ def main(args):
     root = '/data2/HDD_16TB'
     args.print_level = 3
     args.epochs = 1
+    args.model = "shunted_mae_vit_noargs"
+    # args.model = "MaskedAutoencoderShuntedViT"
     
     
     input_sizes_lp = []
@@ -276,7 +278,6 @@ def main(args):
             f"b{args.batch_size}_e{args.epochs}_{args.attention}_demo"
             
         args.output_dir  = f"{root}/ICCV/Model_Saving/out_i{args.input_size}_p{str_patch_sizes}_e{embed_dims}_d{depths}_h{num_heads}_mlp{mlp_ratios}_sr{sr_ratios}_ratio{mask_ratio}"
-        args.model = "MaskedAutoencoderShuntedViT"
         print()
         print("--+--+"*20)
         print(f"Params: Batch Size: {args.batch_size}, Input Size: {args.input_size}, Patch Sizes: {patch_sizes}, Embed Dims: {embed_dims}")
@@ -310,9 +311,9 @@ def main(args):
         model = models_mae.__dict__[args.model](
             input_size=args.input_size,
             patch_sizes=patch_sizes,
-            embed_dims=embed_dims,
-            depths=depths,
-            num_heads=num_heads,
+            dim_model=embed_dims,
+            deencoder_num_layerspths=depths,
+            encoder_num_heads=num_heads,
             mlp_ratios=mlp_ratios,
             sr_ratios=sr_ratios,
             input_channels=dataset_train.in_c,
