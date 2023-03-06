@@ -8,7 +8,6 @@ PATCH_SIZE=16
 
 MODEL="mae_vit_base"
 FFN_NAME="MLP"
-
 LOSS="mse"
 
 ATTENTION=$1

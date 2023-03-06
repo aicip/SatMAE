@@ -8,20 +8,12 @@ PATCH_SIZE=16
 
 MODEL="mae_vit_base"
 FFN_NAME="MLP"
-
 LOSS="l1"
 
-ATTENTION=$1
-if [ -z "$ATTENTION" ]; then
-    echo "Usage: $0 <attention> [additional flags]"
-    echo "Attentions: scaled_dot_product, linformer, orthoformer, random, local, nystrom, fourier_mix"
-    exit 1
-fi
-# remove the first argument from the list of arguments
-shift
+ATTENTION="scaled_dot_product"
 
 IN_PATH_BASE="../fmow-rgb-preproc"
-IN_PATH="${IN_PATH_BASE}/train_${INPUT_SIZE}.csv"
+IN_PATH="$IN_PATH_BASE/train_${INPUT_SIZE}.csv"
 # IN_PATH="$IN_PATH_BASE/train_${INPUT_SIZE}_com2044.csv"
 
 # OUT_DIR_BASE="."
@@ -31,7 +23,7 @@ OUT_DIR="${OUT_DIR_BASE}/out_${MODEL}_xformers_${ATTENTION}_${FFN_NAME}_i${INPUT
 # Note: If you want to use additional flags, pass them when running the script.
 # Example: ./trainX.sh --wandb satmae --device "cuda:0"
 
-python3 main_pretrain.py --use-xformers \
+python3 main_pretrain.py \
     --train_path "$IN_PATH" \
     --output_dir "$OUT_DIR" \
     --model="$MODEL" \
