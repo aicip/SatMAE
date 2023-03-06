@@ -205,7 +205,7 @@ def main(args):
     
     # 2 stages
     # input_sizes_lp.append(64)
-    # batch_sizes_lp.append(64)
+    # batch_sizes_lp.append(1)
     # patch_sizes_lp.append([4, 4])
     # embed_dims_lp.append([256, 512])
     # depths_lp.append([6, 12])
@@ -216,7 +216,7 @@ def main(args):
     
     # 4 stages
     input_sizes_lp.append(64)
-    batch_sizes_lp.append(64)
+    batch_sizes_lp.append(1)
     patch_sizes_lp.append([2, 2, 2, 2])
     embed_dims_lp.append([64, 128, 256, 512])
     depths_lp.append([1, 2, 4, 1])
@@ -309,14 +309,14 @@ def main(args):
 
         # define the model
         model = models_mae.__dict__[args.model](
-            img_size=args.input_size,
+            input_size=args.input_size,
             patch_sizes=patch_sizes,
             embed_dims=embed_dims,
             depths=depths,
             num_heads=num_heads,
             mlp_ratios=mlp_ratios,
             sr_ratios=sr_ratios,
-            in_chans=dataset_train.in_c,
+            input_channels=dataset_train.in_c,
             norm_pix_loss=args.norm_pix_loss,
             print_level=args.print_level,)
 
