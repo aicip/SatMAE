@@ -173,6 +173,7 @@ def plot_comp(
     title=None,
     figsize=12,
     savedir="plots",
+    save=False,
 ):
     """
     :param resample: An optional resampling filter.  This can be
@@ -218,20 +219,21 @@ def plot_comp(
             show_image(imgs[i], ax, titles[i])
 
     plt.tight_layout()
-    if title is not None:
-        # replace any symbols with dashes and spaces with underscores
-        # replace symbols with dashes
-        save_fname = title.replace("-", "")
-        save_fname = re.sub(r"[^\w\s]", "-", save_fname)
-        # replace spaces with underscores
-        save_fname = re.sub(r"\s+", "_", save_fname)
+    if save:
+        if title is not None:
+            # replace any symbols with dashes and spaces with underscores
+            # replace symbols with dashes
+            save_fname = title.replace("-", "")
+            save_fname = re.sub(r"[^\w\s]", "-", save_fname)
+            # replace spaces with underscores
+            save_fname = re.sub(r"\s+", "_", save_fname)
 
-        # if folder does not exist, create it
-        if not os.path.exists(savedir):
-            os.makedirs(savedir)
-        plt.savefig(os.path.join(savedir, f"plot_viz_{save_fname}.png"))
-    else:
-        print("INFO: Skipping saving because title was not provided")
+            # if folder does not exist, create it
+            if not os.path.exists(savedir):
+                os.makedirs(savedir)
+            plt.savefig(os.path.join(savedir, f"plot_viz_{save_fname}.png"))
+        else:
+            print("INFO: Skipped saving because title was not provided")
     plt.show()
 
 
@@ -246,6 +248,7 @@ def plot_comp_many(
     use_noise: Optional[tuple] = None,  # ex: ("gaussian", 0.25)
     resample=PIL.Image.Resampling.BICUBIC,
     base_title: Optional[str] = None,
+    save=False,
 ):
     # for img_path in glob.iglob(basedir + '**/*.jpg', recursive=True):
     if walkseed is not None:
@@ -277,6 +280,7 @@ def plot_comp_many(
                 title=title,
                 use_noise=None,
                 resample=resample,
+                save=save,
             )
             if use_noise is not None:
                 plot_comp(
@@ -286,4 +290,5 @@ def plot_comp_many(
                     use_noise=use_noise,
                     title=f"{title} - {use_noise[0]} noise {use_noise[1]}",
                     resample=resample,
+                    save=save,
                 )
