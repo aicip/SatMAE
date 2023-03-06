@@ -10,6 +10,7 @@ from functools import partial
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import transforms as T
 import xformers
 from timm.models.vision_transformer import Block, PatchEmbed
 from xformers.factory import xFormer, xFormerConfig
@@ -17,6 +18,29 @@ from xformers.factory import xFormer, xFormerConfig
 from util.pos_embed import get_2d_sincos_pos_embed
 
 # xformers._is_functorch_available = True
+
+# adding two function, MLP is for prediction, RandomApply is for augment
+
+def MLP(dim, projection_size=512, hidden_size=1024):
+    return nn.Sequential(
+        nn.Linear(dim, hidden_size),
+        nn.BatchNorm1d(64),
+        nn.ReLU(inplace=True),
+        nn.Linear(hidden_size, projection_size)
+    )
+
+class RandomApply(nn.Module):
+    def __init__(self, fn, p):
+        super().__init__()
+        self.fn = fn
+        self.p = p
+    def forward(self, x):
+        if random.random() > self.p:
+            return x
+        return self.fn(x)
+
+def default(val, def_val):
+    return def_val if val is None else val
 
 
 class MaskedAutoencoderViT(nn.Module):
@@ -78,6 +102,19 @@ class MaskedAutoencoderViT(nn.Module):
                 ffn_activation == "gelu"
             ), f"Feedforward activation {ffn_activation} not supported with use_xformers=False, as Timm's implementation uses gelu"
 
+        # augmentation define
+        # Adding two augments for the input to get subsampled image x1, x2: x1 = x, x2 = subsample(x)
+        AUG1 = torch.nn.Sequential(
+            T.Resize(size=(input_size, input_size))
+        )
+        AUG2 = torch.nn.Sequential(
+            T.RandomResizedCrop(size=(input_size, input_size), scale=(0.2, 0.8))
+            # T.Resize(size=img_size)
+        )
+
+        self.augment1 = default(augment_fn1, AUG1)
+        self.augment2 = default(augment_fn2, AUG2)
+        
         self.patch_embed = PatchEmbed(input_size, patch_size, input_channels, dim_model)
         num_patches = self.patch_embed.num_patches
 
