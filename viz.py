@@ -238,7 +238,7 @@ def plot_comp(
 def plot_comp_many(
     models: dict,
     basedir: str,
-    max_img_samples: int = 5,
+    max_img_samples: int = 10,
     num_run_each: int = 1,
     random_walk: bool = False,
     walkseed: Optional[int] = None,  # Only used if random_walk is True
