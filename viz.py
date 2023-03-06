@@ -1,9 +1,7 @@
 import os
 from typing import Optional
 
-import matplotlib.pyplot as plt
 import numpy as np
-import skimage
 import torch
 from PIL import Image
 
@@ -57,6 +55,17 @@ def prepare_model(
 
     # build model
     args = vars(checkpoint["args"])
+    if args['attention'] == 'shunted': # Temporary solution
+        sep = '|'
+        to_list = lambda x: [int(y) for y in x.split(sep)]
+        args['patch_sizes'] = to_list(args['patch_sizes'])
+        args['embed_dims'] = to_list(args['embed_dims'])
+        args['depths'] = to_list(args['depths'])
+        args['num_heads'] = to_list(args['num_heads'])
+        args['mlp_ratios'] = to_list(args['mlp_ratios'])
+        args['sr_ratios'] = to_list(args['sr_ratios'])
+        args['print_level'] = 0
+    
     print("args:", args)
     model = getattr(models_mae, arch)(**args)
     # load model
@@ -75,6 +84,7 @@ def prepare_image(image_uri, model, resample=None):
     """
     img = Image.open(image_uri)
 
+        
     img_size = model.input_size
     img_chans = model.input_channels
 
@@ -118,8 +128,11 @@ def show_image(image, ax=None, title=""):
 def run_one_image(img, model, seed: Optional[int] = None):
     if seed is not None:
         torch.manual_seed(seed)
-
-    patch_size = model.patch_size
+    
+    if 'num_stages' in model.__dict__:
+        patch_size = model.patch_sizes[-1]
+    else:
+        patch_size = model.patch_size
     channels = model.input_channels
 
     # print("Patch Size:", patch_size)
@@ -138,9 +151,17 @@ def run_one_image(img, model, seed: Optional[int] = None):
 
     # visualize the mask
     mask = mask.detach()
-    mask = mask.unsqueeze(-1).repeat(
-        1, 1, model.patch_embed.patch_size[0] ** 2 * 3
-    )  # (N, H*W, p*p*3)
+    if 'num_stages' in model.__dict__:
+        stage = model.num_stages - 1
+        self_patch_embed = getattr(model, f"patch_embed{stage + 1}")
+        patch_size = self_patch_embed.patch_size[0]
+        mask = mask.unsqueeze(-1).repeat(
+            1, 1, patch_size ** 2 * 3
+        )  # (N, H*W, p*p*3)
+    else:
+        mask = mask.unsqueeze(-1).repeat(
+            1, 1, model.patch_embed.patch_size[0] ** 2 * 3
+        )  # (N, H*W, p*p*3)
     mask = model.unpatchify(
         mask, p=patch_size, c=channels
     )  # 1 is removing, 0 is keeping
