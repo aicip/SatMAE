@@ -192,7 +192,6 @@ def main(args):
     args.epochs = 1
     
     
-    
     input_sizes_lp = []
     batch_sizes_lp = []
     patch_sizes_lp = []
@@ -216,7 +215,7 @@ def main(args):
     
     # 4 stages
     input_sizes_lp.append(64)
-    batch_sizes_lp.append(1)
+    batch_sizes_lp.append(64)
     patch_sizes_lp.append([2, 2, 2, 2])
     embed_dims_lp.append([64, 128, 256, 512])
     depths_lp.append([1, 2, 4, 1])
@@ -277,7 +276,7 @@ def main(args):
             f"b{args.batch_size}_e{args.epochs}_{args.attention}_demo"
             
         args.output_dir  = f"{root}/ICCV/Model_Saving/out_i{args.input_size}_p{str_patch_sizes}_e{embed_dims}_d{depths}_h{num_heads}_mlp{mlp_ratios}_sr{sr_ratios}_ratio{mask_ratio}"
-        args.model = "shunted_mae_vit_large_patch16"
+        args.model = "MaskedAutoencoderShuntedViT"
         print()
         print("--+--+"*20)
         print(f"Params: Batch Size: {args.batch_size}, Input Size: {args.input_size}, Patch Sizes: {patch_sizes}, Embed Dims: {embed_dims}")

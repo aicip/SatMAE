@@ -6,17 +6,18 @@ EPOCHS=200
 
 INPUT_SIZE=64
 BATCH_SIZE=64
+
 PATCH_SIZES="4|4"
-EMBED_DIMS='256|512'
-DEPTHS='6|12'
-NUM_HEADS='8|16'
-MLP_RATIOS='4|4'
-SR_RATIOS='2|2'
-MASK_RATIO='0.60'
+# MASK_RATIO='0.60'
+MASK_RATIO='0.75'
 
 PRINT_LEVEL=1
 ATTENTION="shunted"
-MODEL_NAME="shunted_mae_vit_large_patch16"
+
+MODEL_NAME="shunted_2s_mae_vit_tiny"
+# MODEL_NAME="shunted_2s_mae_vit_mini"
+# MODEL_NAME="shunted_2s_mae_vit_small"
+# MODEL_NAME="shunted_2s_mae_vit_base"
 
 # Data path for com1822:
 IN_PATH_BASE="/data2/HDD_16TB"
@@ -30,7 +31,7 @@ OUT_DIR_BASE="/data2/HDD_16TB/ICCV/Model_Saving"
 # Data path for com2044
 # OUT_DIR_BASE="/mnt/com1822_HDD_16TB/ICCV/Model_Saving"
 
-OUT_DIR="${OUT_DIR_BASE}/out_i${INPUT_SIZE}_p${PATCH_SIZES}_e${EMBED_DIMS}_d${DEPTHS}_h${NUM_HEADS}_mlp${MLP_RATIOS}_sr${SR_RATIOS}_e${EPOCHS}_${ATTENTION}_ratio${MASK_RATIO}"
+OUT_DIR="${OUT_DIR_BASE}/out_${MODEL}_i${INPUT_SIZE}_p${PATCH_SIZES}_e${EPOCHS}_${ATTENTION}_ratio${MASK_RATIO}"
 
 WANDB="satmae"
 
@@ -40,11 +41,6 @@ python3 main_pretrain.py \
 --output_dir "${OUT_DIR}" \
 --input_size "${INPUT_SIZE}" \
 --patch_sizes "${PATCH_SIZES}" \
---embed_dims "${EMBED_DIMS}" \
---depths "${DEPTHS}" \
---num_heads "${NUM_HEADS}" \
---mlp_ratios "${MLP_RATIOS}" \
---sr_ratios "${SR_RATIOS}" \
 --batch_size "${BATCH_SIZE}" \
 --epochs "${EPOCHS}" \
 --attention "${ATTENTION}" \

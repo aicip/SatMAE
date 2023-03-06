@@ -43,13 +43,13 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                  norm_pix_loss=False,
                  mask_ratio=0.75,
                  # shunted arguments
-                 embed_dims=None,
-                 num_heads=None,
+                 dim_model=None,
+                 encoder_num_heads=None,
                  mlp_ratios=None,
                  drop_rate=0.,
                  attn_drop_rate=0.,
                  drop_path_rate=0.,
-                 depths=None,
+                 encoder_num_layers=None,
                  sr_ratios=None,
                  num_conv=0,
                  # Other
@@ -66,13 +66,13 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             print(f"img_size: {input_size}")
             print(f"patch_sizes: {patch_sizes}")
             print(f"input_channels: {input_channels}")
-            print(f"embed_dims: {embed_dims}")
-            print(f"num_heads: {num_heads}")
+            print(f"embed_dims: {dim_model}")
+            print(f"num_heads: {encoder_num_heads}")
             print(f"mlp_ratios: {mlp_ratios}")
             print(f"decoder_embed_dim: {decoder_embed_dim}")
             print(f"decoder_depth: {decoder_depth}")
             print(f"decoder_num_heads: {decoder_num_heads}")
-            print(f"depths: {depths}")
+            print(f"depths: {encoder_num_layers}")
             print(f"sr_ratios: {sr_ratios}")
             print(f"num_conv: {num_conv}")
             print(f"mask_ratio: {mask_ratio}")
@@ -80,24 +80,24 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             print(f"use_shunted_head: {use_shunted_head}")
 
             print("--"*8, "Init Encoder", "--"*8)
-        assert (len(patch_sizes) == len(embed_dims) == len(num_heads) ==
-                len(mlp_ratios) == len(depths) == len(sr_ratios))
+        assert (len(patch_sizes) == len(dim_model) == len(encoder_num_heads) ==
+                len(mlp_ratios) == len(encoder_num_layers) == len(sr_ratios))
         self.input_channels = input_channels
-        self.depths = depths
-        self.num_stages = len(depths)
+        self.depths = encoder_num_layers
+        self.num_stages = len(encoder_num_layers)
         self.mask_ratio = mask_ratio
         self.use_shunted_head = use_shunted_head
         # --------------------------------------------------------------------------
         # MAE encoder specifics
         self.input_size = input_size
         self.patch_sizes = patch_sizes
-        self.embed_dims = embed_dims
-        self.num_heads = num_heads
+        self.embed_dims = dim_model
+        self.num_heads = encoder_num_heads
         self.mlp_ratios = mlp_ratios
-        self.depths = depths
+        self.depths = encoder_num_layers
         self.mask_ratio = mask_ratio
         dpr = [x.item() for x in torch.linspace(0, drop_path_rate,
-                                                sum(depths))]  # stochastic depth decay rule
+                                                sum(encoder_num_layers))]  # stochastic depth decay rule
         cur = 0
         next_embed_img_size = next_patch_H = next_patch_W = input_size
         for i in range(self.num_stages):
@@ -108,25 +108,27 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                                           patch_size=patch_sizes[i],
                                           stride=patch_sizes[i],
                                           in_chans=self.input_channels,
-                                          embed_dim=embed_dims[i])
+                                          embed_dim=dim_model[i])
             else:
                 if use_overlap_patch_embed:  # Doesn't work
                     patch_embed = OverlapPatchEmbed(img_size=next_embed_img_size,
                                                     patch_size=patch_sizes[i],
                                                     stride=patch_sizes[i],
-                                                    in_chans=self.input_channels if i == 0 else embed_dims[i - 1],
-                                                    embed_dim=embed_dims[i])
+                                                    in_chans=self.input_channels if i == 0 else dim_model[
+                                                        i - 1],
+                                                    embed_dim=dim_model[i])
                 else:
                     patch_embed = ShuntedPatchEmbed(img_size=next_embed_img_size,
                                                     patch_size=patch_sizes[i],
-                                                    in_chans=self.input_channels if i == 0 else embed_dims[i - 1],
-                                                    embed_dim=embed_dims[i])
+                                                    in_chans=self.input_channels if i == 0 else dim_model[
+                                                        i - 1],
+                                                    embed_dim=dim_model[i])
 
             if self.print_level > 0:
                 print(f"++ Stage {i+1}")
             # Find next patch embedding shape
             dummy = torch.zeros(1,
-                                self.input_channels if i == 0 else embed_dims[i - 1],
+                                self.input_channels if i == 0 else dim_model[i - 1],
                                 next_embed_img_size,
                                 next_embed_img_size)
             if self.print_level > 0:
@@ -139,7 +141,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                 print(f"\tNumber of patches: {num_patches}")
                 print(f"\tPatch_embed(H, W): ({next_patch_H}, {next_patch_W})")
                 print(
-                    f"\tPatch_embed.out: (1, {num_patches}, {embed_dims[i]})")
+                    f"\tPatch_embed.out: (1, {num_patches}, {dim_model[i]})")
             next_embed_img_size = next_patch_H
             if i == 0:
                 # Size will be reduced due to the mask
@@ -158,8 +160,8 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                 print("\tNext Patch_embed.img_size: ", next_embed_img_size)
 
             # Encoder Transformer Block
-            blocks = nn.ModuleList([ShuntedBlock(dim=embed_dims[i],
-                                                 num_heads=num_heads[i],
+            blocks = nn.ModuleList([ShuntedBlock(dim=dim_model[i],
+                                                 num_heads=encoder_num_heads[i],
                                                  mlp_ratio=mlp_ratios[i],
                                                  qkv_bias=True,
                                                  drop=drop_rate,
@@ -167,20 +169,20 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                                                  drop_path=dpr[cur + j],
                                                  norm_layer=norm_layer,
                                                  sr_ratio=sr_ratios[i])
-                                    for j in range(depths[i])])
+                                    for j in range(encoder_num_layers[i])])
             if self.print_level > 0:
                 print(f"\tTransformer Block info:")
-                print(f"\t\tDepth: {depths[i]}")
-                print(f"\t\tHeads: {num_heads[i]}")
-                print(f"\t\tEmbed Dim: {embed_dims[i]}")
+                print(f"\t\tDepth: {encoder_num_layers[i]}")
+                print(f"\t\tHeads: {encoder_num_heads[i]}")
+                print(f"\t\tEmbed Dim: {dim_model[i]}")
                 print(f"\t\tMLP Ratio: {mlp_ratios[i]}")
                 print(f"\t\tSR Ratio: {sr_ratios[i]}")
                 print(
-                    f"\t\tDrop Paths {[dpr[cur + j] for j in range(depths[i])]}")
+                    f"\t\tDrop Paths {[dpr[cur + j] for j in range(encoder_num_layers[i])]}")
                 print(f"\t\tDrop Rate {drop_rate}")
             # Norm Layer
-            norm = norm_layer(embed_dims[i])
-            cur += depths[i]
+            norm = norm_layer(dim_model[i])
+            cur += encoder_num_layers[i]
 
             setattr(self, f"patch_embed{i + 1}", patch_embed)
             setattr(self, f"blocks{i + 1}", blocks)
@@ -197,7 +199,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         if self.print_level > 0:
             print("--"*8, "Init Decoder", "--"*8)
         # MAE decoder specifics
-        self.decoder_embed = nn.Linear(embed_dims[-1],  # replaced with shunted equiv
+        self.decoder_embed = nn.Linear(dim_model[-1],  # replaced with shunted equiv
                                        decoder_embed_dim,
                                        bias=True)
         if self.print_level > 0:
@@ -849,80 +851,160 @@ class MaskedAutoencoderViT(nn.Module):
         return loss, pred, mask
 
 
-def mae_vit_base_patch16_dec512d8b(**kwargs):
+def mae_vit_tiny(**kwargs):
     model = MaskedAutoencoderViT(
-        embed_dim=768,
-        depth=12,
-        num_heads=12,
-        decoder_embed_dim=512,
-        decoder_depth=8,
-        decoder_num_heads=16,
-        mlp_ratio=4,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        **kwargs
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        **kwargs,
     )
     return model
 
 
-def mae_vit_large_patch16_dec512d8b(**kwargs):
+def mae_vit_mini(**kwargs):
     model = MaskedAutoencoderViT(
-        embed_dim=1024,
-        depth=24,
-        num_heads=16,
+        dim_model=256,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
         decoder_embed_dim=512,
-        decoder_depth=8,
+        decoder_num_layers=8,
         decoder_num_heads=16,
-        mlp_ratio=4,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        **kwargs
+        **kwargs,
     )
     return model
 
 
-def mae_vit_huge_patch14_dec512d8b(**kwargs):
+def mae_vit_small(**kwargs):
     model = MaskedAutoencoderViT(
-        embed_dim=1280,
-        depth=32,
-        num_heads=16,
+        dim_model=512,
+        encoder_num_layers=8,
+        encoder_num_heads=12,
         decoder_embed_dim=512,
-        decoder_depth=8,
+        decoder_num_layers=8,
         decoder_num_heads=16,
-        mlp_ratio=4,
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
-        **kwargs
+        **kwargs,
+    )
+    return model
+
+
+def mae_vit_base(**kwargs):
+    model = MaskedAutoencoderViT(
+        dim_model=768,
+        encoder_num_layers=12,
+        encoder_num_heads=12,
+        decoder_embed_dim=512,
+        decoder_num_layers=8,
+        decoder_num_heads=16,
+        **kwargs,
+    )
+    return model
+
+
+def mae_vit_large(**kwargs):
+    model = MaskedAutoencoderViT(
+        dim_model=1024,
+        encoder_num_layers=24,
+        encoder_num_heads=16,
+        decoder_embed_dim=512,
+        decoder_num_layers=8,
+        decoder_num_heads=16,
+        **kwargs,
+    )
+    return model
+
+
+def mae_vit_huge(**kwargs):
+    model = MaskedAutoencoderViT(
+        dim_model=1280,
+        encoder_num_layers=32,
+        encoder_num_heads=16,
+        decoder_embed_dim=512,
+        decoder_num_layers=8,
+        decoder_num_heads=16,
+        **kwargs,
     )
     return model
 
 # Shunted Transformer
 
-
-def shunted_mae_vit_large_patch16_dec512d8b(**kwargs):
+def shunted_2s_mae_vit_tiny(**kwargs):
     model = MaskedAutoencoderShuntedViT(
         # Encoder
-        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        dim_model=[32, 64],
+        encoder_num_layers=[1, 2],
+        encoder_num_heads=[2, 4],
         attn_drop_rate=0.,
         drop_path_rate=0.,
         drop_rate=0.,
         num_conv=0,
         # Decoder
         decoder_embed_dim=512,
-        decoder_depth=8,
+        decoder_num_layers=8,
+        decoder_num_heads=16,
+        **kwargs
+    )
+    return model
+
+def shunted_2s_mae_vit_mini(**kwargs):
+    model = MaskedAutoencoderViT(
+        # Encoder
+        dim_model=[64, 128],
+        encoder_num_layers=[1, 2],
+        encoder_num_heads=[2, 4],
+        mlp_ratios=[4, 4],
+        sr_ratios=[2, 2],
+        attn_drop_rate=0.,
+        drop_path_rate=0.,
+        drop_rate=0.,
+        num_conv=0,
+        # Decoder
+        decoder_embed_dim=512,
+        decoder_num_layers=8,
         decoder_num_heads=16,
         **kwargs
     )
     return model
 
 
-# --- set recommended archs --- #
+def shunted_2s_mae_vit_small(**kwargs):
+    model = MaskedAutoencoderViT(
+        # Encoder
+        dim_model=[128, 256],
+        encoder_num_layers=[2, 4],
+        encoder_num_heads=[2, 4],
+        mlp_ratios=[4, 4],
+        sr_ratios=[2, 2],
+        attn_drop_rate=0.,
+        drop_path_rate=0.,
+        drop_rate=0.,
+        num_conv=0,
+        # Decoder
+        decoder_embed_dim=512,
+        decoder_num_layers=8,
+        decoder_num_heads=16,
+        **kwargs
+    )
+    return model
 
-# SatMAE Only
-# decoder: 512 dim, 8 blocks:
-mae_vit_base_patch16 = mae_vit_base_patch16_dec512d8b
-# decoder: 512 dim, 8 blocks:
-mae_vit_large_patch16 = mae_vit_large_patch16_dec512d8b
-# decoder: 512 dim, 8 blocks:
-mae_vit_huge_patch14 = mae_vit_huge_patch14_dec512d8b
-
-# Shunted + SatMAE
-# Shunted - decoder: 512 dim, 8 blocks:
-shunted_mae_vit_large_patch16 = shunted_mae_vit_large_patch16_dec512d8b
+def shunted_2s_mae_vit_base(**kwargs):
+    model = MaskedAutoencoderViT(
+        # Encoder
+        dim_model=[256, 512],
+        encoder_num_layers=[2, 4],
+        encoder_num_heads=[2, 4],
+        mlp_ratios=[4, 4],
+        sr_ratios=[2, 2],
+        attn_drop_rate=0.,
+        drop_path_rate=0.,
+        drop_rate=0.,
+        num_conv=0,
+        # Decoder
+        decoder_embed_dim=512,
+        decoder_num_layers=8,
+        decoder_num_heads=16,
+        **kwargs,
+    )
+    return model
