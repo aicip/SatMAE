@@ -9,7 +9,7 @@ PATCH_SIZE=8
 MODEL="mae_vit_tiny"
 FFN_NAME="MLP"
 LOSS="l1"
-LR=0.0005
+LR=0.001
 
 ATTENTION=$1
 if [ -z "$ATTENTION" ]; then
