@@ -112,13 +112,6 @@ def get_args_parser():
         type=str,
         help="Loss function to use (mse or mae)",
     )
-    # arg for loss, default is mae
-    parser.add_argument(
-        "--loss",
-        default="mse",
-        type=str,
-        help="Loss function to use (mse or mae)",
-    )
 
     parser.add_argument(
         "--norm_pix_loss",
@@ -197,11 +190,9 @@ def get_args_parser():
     parser.add_argument(
         "--output_dir",
         default="./outputs",
-        default="./outputs",
         help="path where to save, empty for no saving",
     )
     parser.add_argument(
-        "--log_dir", default="./logs", help="path where to tensorboard log"
         "--log_dir", default="./logs", help="path where to tensorboard log"
     )
     parser.add_argument(

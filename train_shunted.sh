@@ -36,7 +36,7 @@ IN_PATH="${IN_PATH_BASE}/fmow-rgb-preproc/train_${INPUT_SIZE}_com2044.csv"
 # Data path for com2044
 OUT_DIR_BASE="/mnt/com1822_HDD_16TB/ICCV/Model_Saving"
 
-OUT_DIR="${OUT_DIR_BASE}/out_${MODEL}_i${INPUT_SIZE}_p${PATCH_SIZES}_e${EPOCHS}_${ATTENTION}_ratio${MASK_RATIO}_lr${LR}_loss${LOSS}"
+OUT_DIR="${OUT_DIR_BASE}/out_${MODEL_NAME}_i${INPUT_SIZE}_p${PATCH_SIZES}_e${EPOCHS}_${ATTENTION}_ratio${MASK_RATIO}_lr${LR}_loss${LOSS}"
 
 WANDB="satmae"
 
