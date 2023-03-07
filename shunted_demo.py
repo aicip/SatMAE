@@ -188,207 +188,125 @@ def main(args):
     args.attention = "shunted"
     # root = '/mnt/com1822_HDD_16TB'
     root = '/data2/HDD_16TB'
+    # args.model = "shunted_2s_mae_vit_tiny"
+    args.model = "shunted_2s_mae_vit_base"
     args.print_level = 3
     args.epochs = 1
-    args.model = "shunted_mae_vit_noargs"
-    # args.model = "MaskedAutoencoderShuntedViT"
+        
     
-    
-    input_sizes_lp = []
-    batch_sizes_lp = []
-    patch_sizes_lp = []
-    embed_dims_lp = []
-    depths_lp = []
-    num_heads_lp = []
-    mlp_ratios_lp = []
-    sr_ratios_lp = []
-    mask_ratio_lp = []
-    
-    # 2 stages
-    # input_sizes_lp.append(64)
-    # batch_sizes_lp.append(1)
-    # patch_sizes_lp.append([4, 4])
-    # embed_dims_lp.append([256, 512])
-    # depths_lp.append([6, 12])
-    # num_heads_lp.append([8, 16])
-    # mlp_ratios_lp.append([4, 4])
-    # sr_ratios_lp.append([2, 2])
-    # mask_ratio_lp.append(0.75)
-    
-    # 4 stages
-    input_sizes_lp.append(64)
-    batch_sizes_lp.append(64)
-    patch_sizes_lp.append([2, 2, 2, 2])
-    embed_dims_lp.append([64, 128, 256, 512])
-    depths_lp.append([1, 2, 4, 1])
-    num_heads_lp.append([2, 4, 8, 16])
-    mlp_ratios_lp.append([8, 8, 4, 4])
-    sr_ratios_lp.append([2, 2, 2, 2])
-    mask_ratio_lp.append(0.75)
-    ## less embeds
-    # input_sizes_lp.append(64)
-    # batch_sizes_lp.append(64)
-    # patch_sizes_lp.append([2, 2, 2, 2])
-    # embed_dims_lp.append([16, 32, 64, 128])
-    # depths_lp.append([1, 2, 4, 1])
-    # num_heads_lp.append([2, 4, 8, 16])
-    # mlp_ratios_lp.append([8, 8, 4, 4])
-    # sr_ratios_lp.append([2, 2, 2, 2])
-    # mask_ratio_lp.append(0.75)    
-    # ## less heads    
-    # input_sizes_lp.append(64)
-    # batch_sizes_lp.append(64)
-    # patch_sizes_lp.append([2, 2, 2, 2])
-    # embed_dims_lp.append([64, 128, 256, 512])
-    # depths_lp.append([1, 2, 4, 1])
-    # num_heads_lp.append([1, 2, 4, 8])
-    # mlp_ratios_lp.append([8, 8, 4, 4])
-    # sr_ratios_lp.append([2, 2, 2, 2])
-    # mask_ratio_lp.append(0.75)
-    # ## less depths    
-    # input_sizes_lp.append(64)
-    # batch_sizes_lp.append(64)
-    # patch_sizes_lp.append([2, 2, 2, 2])
-    # embed_dims_lp.append([64, 128, 256, 512])
-    # depths_lp.append([1, 1, 2, 1])
-    # num_heads_lp.append([2, 4, 8, 16])
-    # mlp_ratios_lp.append([8, 8, 4, 4])
-    # sr_ratios_lp.append([2, 2, 2, 2])
-    # mask_ratio_lp.append(0.75)
-    # ## less ml    
-    # input_sizes_lp.append(64)
-    # batch_sizes_lp.append(64)
-    # patch_sizes_lp.append([2, 2, 2, 2])
-    # embed_dims_lp.append([64, 128, 256, 512])
-    # depths_lp.append([1, 1, 2, 1])
-    # num_heads_lp.append([2, 4, 8, 16])
-    # mlp_ratios_lp.append([4, 4, 4, 4])
-    # sr_ratios_lp.append([2, 2, 2, 2])
-    # mask_ratio_lp.append(0.75)
-    
-    
-    for input_size, batch_size, patch_sizes, embed_dims, depths, num_heads, mlp_ratios, sr_ratios, mask_ratio in zip(input_sizes_lp, batch_sizes_lp, patch_sizes_lp, embed_dims_lp, depths_lp, num_heads_lp, mlp_ratios_lp, sr_ratios_lp, mask_ratio_lp):
-        args.input_size = input_size
-        args.batch_size = batch_size
-    
-        str_patch_sizes = '|'.join([str(i) for i in patch_sizes])
-        args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv" # 1822
-        # args.train_path = f"{root}/fmow-rgb-preproc/train_{args.input_size}_com2044.csv" # 2044
-        args.output_dir = f"{root}/ICCV/Model_Saving/out_i{args.input_size}_p{str_patch_sizes}_"\
-            f"b{args.batch_size}_e{args.epochs}_{args.attention}_demo"
-            
-        args.output_dir  = f"{root}/ICCV/Model_Saving/out_i{args.input_size}_p{str_patch_sizes}_e{embed_dims}_d{depths}_h{num_heads}_mlp{mlp_ratios}_sr{sr_ratios}_ratio{mask_ratio}"
-        print()
-        print("--+--+"*20)
-        print(f"Params: Batch Size: {args.batch_size}, Input Size: {args.input_size}, Patch Sizes: {patch_sizes}, Embed Dims: {embed_dims}")
-        print(f"        Depths: {depths}, Num Heads: {num_heads}, MLP Ratios: {mlp_ratios}, SR Ratio: {sr_ratios}, Mask Ratio: {mask_ratio}")
-        if args.output_dir:
-            Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-            
-        # misc.init_distributed_mode(args)
+    args.input_size = 64
+    args.batch_size = 1
+    args.patch_size = [4, 4]
+    args.mask_ratio = 0.75
 
-        device = torch.device(args.device)
+    str_patch_sizes = '|'.join([str(i) for i in args.patch_size])
+    args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv" # 1822
+    # args.train_path = f"{root}/fmow-rgb-preproc/train_{args.input_size}_com2044.csv" # 2044
+        
+    args.output_dir  = f"demo_models/out_model{args.model}_i{args.input_size}_p{str_patch_sizes}_ratio{args.mask_ratio}"
+    
+    if args.output_dir:
+        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+        
+    # misc.init_distributed_mode(args)
 
-        # fix the seed for reproducibility
-        seed = args.seed + misc.get_rank()
-        torch.manual_seed(seed)
-        np.random.seed(seed)
-        cudnn.benchmark = True
+    device = torch.device(args.device)
 
-        dataset_train = build_fmow_dataset(is_train=True, args=args)
-        sampler_train = torch.utils.data.RandomSampler(dataset_train)
+    # fix the seed for reproducibility
+    seed = args.seed + misc.get_rank()
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    cudnn.benchmark = True
 
-        data_loader_train = torch.utils.data.DataLoader(
-            dataset_train,
-            sampler=sampler_train,
-            batch_size=args.batch_size,
-            num_workers=args.num_workers,
-            pin_memory=args.pin_mem,
-            drop_last=True,
+    dataset_train = build_fmow_dataset(is_train=True, args=args)
+    sampler_train = torch.utils.data.RandomSampler(dataset_train)
+
+    data_loader_train = torch.utils.data.DataLoader(
+        dataset_train,
+        sampler=sampler_train,
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
+        pin_memory=args.pin_mem,
+        drop_last=True,
+    )
+
+    # define the model
+    model = models_mae.__dict__[args.model](
+        input_size=args.input_size,
+        patch_size=args.patch_size,
+        input_channels=dataset_train.in_c,
+        norm_pix_loss=args.norm_pix_loss,
+        print_level=args.print_level,)
+
+    model.to(device)
+
+    model_without_ddp = model
+
+    eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
+
+    if args.lr is None:  # only base_lr is specified
+        args.lr = args.blr * eff_batch_size / 256
+
+
+    # following timm: set wd as 0 for bias and norm layers
+    param_groups = optim_factory.add_weight_decay(
+        model_without_ddp, args.weight_decay)
+    optimizer = torch.optim.AdamW(param_groups, lr=args.lr, betas=(0.9, 0.95))
+    loss_scaler = NativeScaler()
+
+    misc.load_model(
+        args=args,
+        model_without_ddp=model_without_ddp,
+        optimizer=optimizer,
+        loss_scaler=loss_scaler,
+    )
+    
+    model_parameters = filter(lambda p: p.requires_grad, model.parameters())
+    params = sum([np.prod(p.size()) for p in model_parameters])
+    print(f"Number of trainable parameters: {params:,}")
+
+    
+    print(f"Start training for {args.epochs} epochs")
+    start_time = time.time()
+    for epoch in range(args.start_epoch, args.epochs):
+        # if args.distributed:
+        #     data_loader_train.sampler.set_epoch(epoch)
+
+        train_stats = train_one_epoch(
+            model,
+            data_loader_train,
+            optimizer,
+            device,
+            epoch,
+            loss_scaler,
+            log_writer=None,
+            args=args
         )
 
-        # define the model
-        model = models_mae.__dict__[args.model](
-            input_size=args.input_size,
-            patch_sizes=patch_sizes,
-            dim_model=embed_dims,
-            deencoder_num_layerspths=depths,
-            encoder_num_heads=num_heads,
-            mlp_ratios=mlp_ratios,
-            sr_ratios=sr_ratios,
-            input_channels=dataset_train.in_c,
-            norm_pix_loss=args.norm_pix_loss,
-            print_level=args.print_level,)
-
-        model.to(device)
-
-        model_without_ddp = model
-
-        eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
-
-        if args.lr is None:  # only base_lr is specified
-            args.lr = args.blr * eff_batch_size / 256
-
-
-        # following timm: set wd as 0 for bias and norm layers
-        param_groups = optim_factory.add_weight_decay(
-            model_without_ddp, args.weight_decay)
-        optimizer = torch.optim.AdamW(param_groups, lr=args.lr, betas=(0.9, 0.95))
-        loss_scaler = NativeScaler()
-
-        misc.load_model(
-            args=args,
-            model_without_ddp=model_without_ddp,
-            optimizer=optimizer,
-            loss_scaler=loss_scaler,
-        )
-        model_parameters = filter(lambda p: p.requires_grad, model.parameters())
-        params = sum([np.prod(p.size()) for p in model_parameters])
-        print(f"Number of trainable parameters: {params:,}")
-        # continue
-    
-     
-        print(f"Start training for {args.epochs} epochs")
-        start_time = time.time()
-        for epoch in range(args.start_epoch, args.epochs):
-            # if args.distributed:
-            #     data_loader_train.sampler.set_epoch(epoch)
-
-            train_stats = train_one_epoch(
-                model,
-                data_loader_train,
-                optimizer,
-                device,
-                epoch,
-                loss_scaler,
-                log_writer=None,
-                args=args
+        if args.output_dir and (epoch % 5 == 0 or epoch + 1 == args.epochs):
+            misc.save_model(
+                args=args,
+                model=model,
+                model_without_ddp=model_without_ddp,
+                optimizer=optimizer,
+                loss_scaler=loss_scaler,
+                epoch=epoch,
             )
 
-            if args.output_dir and (epoch % 5 == 0 or epoch + 1 == args.epochs):
-                misc.save_model(
-                    args=args,
-                    model=model,
-                    model_without_ddp=model_without_ddp,
-                    optimizer=optimizer,
-                    loss_scaler=loss_scaler,
-                    epoch=epoch,
-                )
+        log_stats = {
+            **{f"train_{k}": v for k, v in train_stats.items()},
+            "epoch": epoch,
+        }
 
-            log_stats = {
-                **{f"train_{k}": v for k, v in train_stats.items()},
-                "epoch": epoch,
-            }
+        if args.output_dir and misc.is_main_process():
+            with open(
+                os.path.join(args.output_dir, "log.txt"), mode="a", encoding="utf-8"
+            ) as f:
+                f.write(json.dumps(log_stats) + "\n")
 
-            if args.output_dir and misc.is_main_process():
-                with open(
-                    os.path.join(args.output_dir, "log.txt"), mode="a", encoding="utf-8"
-                ) as f:
-                    f.write(json.dumps(log_stats) + "\n")
-
-        total_time = time.time() - start_time
-        total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-        print("Training time {}".format(total_time_str))
+    total_time = time.time() - start_time
+    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+    print("Training time {}".format(total_time_str))
 
 
 if __name__ == "__main__":

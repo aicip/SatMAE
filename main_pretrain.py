@@ -43,12 +43,6 @@ def get_args_parser():
         default=1,
         type=int,
         help="Accumulate gradient iterations (for increasing the effective batch size under memory constraints)",
-    ) 
-    parser.add_argument(
-        "--print_level",
-        default=1,
-        type=int,
-        help="Print Level (0->3) - Only for MaskedAutoencoderShuntedViT",
     )
 
     # Model parameters
@@ -60,44 +54,29 @@ def get_args_parser():
     )
     parser.add_argument(
         "--model",
-        default="mae_vit_large_patch16",
+        default="mae_vit_base",
         type=str,
         metavar="MODEL",
         help="Name of model to train",
     )
 
-    parser.add_argument("--input_size", 
-                        default=224, 
-                        type=int, 
-                        help="images input size")
-    parser.add_argument("--patch_size", 
-                        default=16, 
-                        type=int, 
-                        help="images patch size")
-    
-    parser.add_argument("--patch_sizes", 
-                        default='2-2-2-2', 
-                        type=str, help="multi-stage patch sizes (sep with -)")
-    parser.add_argument("--embed_dims", 
-                        default='64-128-256-512', 
-                        type=str, help="multi-stage embed dims (sep with -)")
-    parser.add_argument("--depths", 
-                        default='1-2-4-1', 
-                        type=str, help="multi-stage encoder  depths (sep with -)")
-    parser.add_argument("--num_heads", 
-                        default='2-4-8-16', 
-                        type=str, help="multi-stage num heads (sep with -)")
-    parser.add_argument("--mlp_ratios", 
-                        default='8-8-4-4', 
-                        type=str, help="multi-stage mlp ratios (sep with -)")
-    parser.add_argument("--sr_ratios", 
-                        default='2-2-2-2', 
-                        type=str, help="multi-stage sr ratios (sep with -)")
-    
-    parser.add_argument("--attention", 
-                        default="scaled_dot_product", 
-                        type=str, 
-                        help="attention name to use in transformer block")
+    parser.add_argument("--input_size", default=128,
+                        type=int, help="images input size")
+    parser.add_argument("--patch_size", default=16,
+                        type=str, help="images input size")
+    parser.add_argument(
+        "--attn_name",
+        default="scaled_dot_product",
+        # Options: "shunted", "orthoformer", "random", "nystrom", "global", "local", "linformer", "pooling", "fourier_mix", "scaled_dot_product"
+        type=str,
+        help="attention name to use in transformer block",
+    )
+    parser.add_argument(
+        "--print_level",
+        default=1,
+        type=int,
+        help="Print Level (0->3) - Only for MaskedAutoencoderShuntedViT",
+    )
     parser.add_argument(
         "--mask_ratio",
         default=0.75,
@@ -105,10 +84,31 @@ def get_args_parser():
         help="Masking ratio (percentage of removed patches).",
     )
     parser.add_argument(
+        "--ffn_name",
+        default="MLP",
+        # Options: "MLP", "FusedMLP"
+        type=str,
+        help="ffn name to use in transformer block",
+    )
+    parser.add_argument(
+        "--use-xformers",
+        action="store_true",
+        help="Use xformers instead of timm for transformer",
+    )
+    parser.set_defaults(use_xformers=False)
+
+    parser.add_argument(
         "--spatial_mask",
         action="store_true",
         default=False,
         help="Whether to mask all channels of a spatial location. Only for indp c model",
+    )
+    # arg for loss, default is mae
+    parser.add_argument(
+        "--loss",
+        default="mse",
+        type=str,
+        help="Loss function to use (mse or mae)",
     )
 
     parser.add_argument(
@@ -187,11 +187,11 @@ def get_args_parser():
 
     parser.add_argument(
         "--output_dir",
-        default="./output_dir",
+        default="./outputs",
         help="path where to save, empty for no saving",
     )
     parser.add_argument(
-        "--log_dir", default="./output_dir", help="path where to tensorboard log"
+        "--log_dir", default="./logs", help="path where to tensorboard log"
     )
     parser.add_argument(
         "--device", default="cuda", help="device to use for training / testing"
@@ -204,7 +204,12 @@ def get_args_parser():
         default=None,
         help="Wandb project name, eg: sentinel_pretrain",
     )
-
+    parser.add_argument(
+        "--wandb_entity",
+        type=str,
+        default="utk-iccv23",
+        help="Wandb entity name, eg: utk-iccv23",
+    )
     parser.add_argument(
         "--start_epoch", default=0, type=int, metavar="N", help="start epoch"
     )
@@ -297,38 +302,23 @@ def main(args):
         )
     # non-spatial, non-temporal
     else:
-        if args.attention == 'shunted':
+        if args.attn_name == 'shunted':
             if 'shunted' not in args.model:
-                raise ValueError('shunted attention only supported for shunted models')
+                raise ValueError(
+                    'shunted attention only supported for shunted models')
             sep = '|'
-            to_list = lambda x: [int(y) for y in x.split(sep)]
-            patch_sizes = to_list(args.patch_sizes)
-            embed_dims = to_list(args.embed_dims)
-            depths = to_list(args.depths)
-            num_heads = to_list(args.num_heads)
-            mlp_ratios = to_list(args.mlp_ratios)
-            sr_ratios = to_list(args.sr_ratios)
-        
+            def to_list(x): return [int(y) for y in x.split(sep)]
+            patch_sizes = to_list(args.patch_size)
+
             model = models_mae.__dict__[args.model](
-                img_size=args.input_size,
-                patch_sizes=patch_sizes,
-                embed_dims=embed_dims,
-                depths=depths,
-                num_heads=num_heads,
-                mlp_ratios=mlp_ratios,
-                sr_ratios=sr_ratios,
+                input_size=args.input_size,
+                patch_size=patch_sizes,
                 in_chans=dataset_train.in_c,
                 norm_pix_loss=args.norm_pix_loss,
                 print_level=args.print_level
             )
         else:
-            model = models_mae.__dict__[args.model](
-                img_size=args.input_size,
-                patch_size=args.patch_size,
-                in_chans=dataset_train.in_c,
-                norm_pix_loss=args.norm_pix_loss,
-                attention=args.attention
-            )
+            model = models_mae.__dict__[args.model](**vars(args))
     model.to(device)
 
     model_without_ddp = model
@@ -352,7 +342,8 @@ def main(args):
         model_without_ddp = model.module
 
     # following timm: set wd as 0 for bias and norm layers
-    param_groups = optim_factory.add_weight_decay(model_without_ddp, args.weight_decay)
+    param_groups = optim_factory.add_weight_decay(
+        model_without_ddp, args.weight_decay)
     optimizer = torch.optim.AdamW(param_groups, lr=args.lr, betas=(0.9, 0.95))
     print(optimizer)
     loss_scaler = NativeScaler()
@@ -369,7 +360,7 @@ def main(args):
         wandb.init(project=args.wandb, entity="utk-iccv23")
         wandb.config.update(args)
         wandb.watch(model)
-        
+
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     params = sum([np.prod(p.size()) for p in model_parameters])
     print(f"Number of trainable parameters: {params}")
