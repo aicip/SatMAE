@@ -15,19 +15,12 @@ import torch.nn as nn
 from timm.models.vision_transformer import Block, PatchEmbed
 from torchvision import transforms as T
 from xformers.factory import xFormer, xFormerConfig
-import math
 
 from shunted import Block as ShuntedBlock
 from shunted import Head as ShuntedHead
 from shunted import OverlapPatchEmbed
 from shunted import PatchEmbed as ShuntedPatchEmbed
 from util.pos_embed import get_2d_sincos_pos_embed
-from shunted import (
-    Block as ShuntedBlock,
-    PatchEmbed as ShuntedPatchEmbed,
-    Head as ShuntedHead,
-    OverlapPatchEmbed,
-)
 
 # xformers._is_functorch_available = True
 
@@ -1670,18 +1663,18 @@ class MaskedAutoencoderViT(nn.Module):
 
         # apply Transformer blocks
         if self.use_xformers:
-            x = self.decoder(x)
+            x1 = self.decoder(x)
         else:
             for blk in self.decoder:
-                x = blk(x)
+                x1 = blk(x)
 
         # predictor projection
-        x = self.decoder_pred(x)
+        x = self.decoder_pred(x1)
 
         # remove cls token
         x = x[:, 1:, :]
 
-        return x
+        return x, x1
 
     def forward_loss_mse(self, imgs, pred, mask):
         """
@@ -1756,7 +1749,7 @@ class MaskedAutoencoderViT(nn.Module):
 
     def forward(self, imgs, mask_ratio=0.75):
         latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
-        pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
+        pred, _ = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
         # TODO: Add flag for loss function
         if self.loss == "mse":
             loss = self.forward_loss_mse(imgs, pred, mask)
