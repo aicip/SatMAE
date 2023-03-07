@@ -62,14 +62,28 @@ def get_args_parser():
         help="Name of model to train",
     )
 
-    parser.add_argument("--input_size", default=128, type=int, help="images input size")
-    parser.add_argument("--patch_size", default=16, type=int, help="images input size")
+    parser.add_argument("--input_size", default=128,
+                        type=int, help="images input size")
+    parser.add_argument("--patch_size", default=16,
+                        type=str, help="images input size")
     parser.add_argument(
         "--attn_name",
         default="scaled_dot_product",
-        # Options: "orthoformer", "random", "nystrom", "global", "local", "linformer", "pooling", "fourier_mix", "scaled_dot_product"
+        # Options: "shunted", "orthoformer", "random", "nystrom", "global", "local", "linformer", "pooling", "fourier_mix", "scaled_dot_product"
         type=str,
         help="attention name to use in transformer block",
+    )
+    parser.add_argument(
+        "--print_level",
+        default=1,
+        type=int,
+        help="Print Level (0->3) - Only for MaskedAutoencoderShuntedViT",
+    )
+    parser.add_argument(
+        "--mask_ratio",
+        default=0.75,
+        type=float,
+        help="Masking ratio (percentage of removed patches).",
     )
     parser.add_argument(
         "--ffn_name",
@@ -85,12 +99,6 @@ def get_args_parser():
     )
     parser.set_defaults(use_xformers=False)
 
-    parser.add_argument(
-        "--mask_ratio",
-        default=0.75,
-        type=float,
-        help="Masking ratio (percentage of removed patches).",
-    )
     parser.add_argument(
         "--spatial_mask",
         action="store_true",
@@ -291,8 +299,15 @@ def main(args):
         )
     # non-spatial, non-temporal
     else:
+        if args.attn_name == 'shunted':
+            if 'shunted' not in args.model:
+                raise ValueError(
+                    'shunted attention only supported for shunted models')
+            sep = '|'
+            to_list = lambda x: [int(y) for y in x.split(sep)]
+            args.patch_size = to_list(args.patch_size)  # e.g. '16|16' -> [16, 16]
+            
         model = models_mae.__dict__[args.model](**vars(args))
-
     model.to(device)
 
     model_without_ddp = model
@@ -320,7 +335,8 @@ def main(args):
     #######################################################################################
     print("=" * 80)
     # following timm: set wd as 0 for bias and norm layers
-    param_groups = optim_factory.add_weight_decay(model_without_ddp, args.weight_decay)
+    param_groups = optim_factory.add_weight_decay(
+        model_without_ddp, args.weight_decay)
     optimizer = torch.optim.AdamW(param_groups, lr=args.lr, betas=(0.9, 0.95))
     print(optimizer)
     loss_scaler = NativeScaler()
