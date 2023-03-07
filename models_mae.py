@@ -7,6 +7,7 @@
 
 from functools import partial
 
+import random
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -21,12 +22,12 @@ from util.pos_embed import get_2d_sincos_pos_embed
 
 # adding two function, MLP is for prediction, RandomApply is for augment
 
-def MLP(dim, projection_size=512, hidden_size=1024):
+def MLP(emd_dim, channel=64, hidden_size=1024):
     return nn.Sequential(
-        nn.Linear(dim, hidden_size),
-        nn.BatchNorm1d(64),
+        nn.Linear(emd_dim, hidden_size),
+        nn.BatchNorm1d(channel),
         nn.ReLU(inplace=True),
-        nn.Linear(hidden_size, projection_size)
+        nn.Linear(hidden_size, emd_dim)
     )
 
 class RandomApply(nn.Module):
@@ -76,6 +77,9 @@ class MaskedAutoencoderViT(nn.Module):
         ),  # Note: Only used if use_xformers=False
         norm_pix_loss=False,
         use_xformers=False,
+        augment_fn1=None,
+        augment_fn2=None,
+        predictor_hidden_size=2048,
         loss="mse",
         **kwargs,
     ):
@@ -117,6 +121,9 @@ class MaskedAutoencoderViT(nn.Module):
         
         self.patch_embed = PatchEmbed(input_size, patch_size, input_channels, dim_model)
         num_patches = self.patch_embed.num_patches
+
+        # may need to be modified to keep size consistency
+        self.predictor = MLP(decoder_embed_dim, num_patches, predictor_hidden_size)
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, dim_model))
         self.encoder_pos_embed = nn.Parameter(
@@ -404,18 +411,18 @@ class MaskedAutoencoderViT(nn.Module):
 
         # apply Transformer blocks
         if self.use_xformers:
-            x = self.decoder(x)
+            dec_emd = self.decoder(x)
         else:
             for blk in self.decoder:
-                x = blk(x)
+                dec_emd = blk(x)
 
         # predictor projection
-        x = self.decoder_pred(x)
+        x = self.decoder_pred(dec_emd)
 
         # remove cls token
         x = x[:, 1:, :]
 
-        return x
+        return x, dec_emd
 
     def forward_loss_mse(self, imgs, pred, mask):
         """
@@ -489,17 +496,38 @@ class MaskedAutoencoderViT(nn.Module):
         return loss
 
     def forward(self, imgs, mask_ratio=0.75):
-        latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
-        pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
+        img1, img2 = self.augment1(imgs), self.augment2(imgs)
+
+        latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio)
+        latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)
+
+        pred1, dec_emd_1 = self.forward_decoder(latent1, ids_restore1)  # [N, L, p*p*3]
+        pred2, dec_emd_2 = self.forward_decoder(latent2, ids_restore2)  # [N, L, p*p*3]
+
+        cross_pred = self.predictor(dec_emd_2[:, 1:, :])
+
+        
+
+        # latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
+        # pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
+
         # TODO: Add flag for loss function
         if self.loss == "mse":
-            loss = self.forward_loss_mse(imgs, pred, mask)
+            loss1 = self.forward_loss_mse(img1, pred1, mask1)
+            loss2 = self.forward_loss_mse(img2, pred2, mask2)
+            cross_loss = self.forward_loss_mse(dec_emd_1[:, 1:, :], cross_pred)
         elif self.loss == "l1":
-            loss = self.forward_loss_l1(imgs, pred, mask)
+            loss1 = self.forward_loss_l1(img1, pred1, mask1)
+            loss2 = self.forward_loss_l1(img2, pred2, mask2)
+            cross_loss = self.forward_loss_l1(dec_emd_1[:, 1:, :], cross_pred)
         else:
             raise ValueError(f"Loss type {self.loss} not supported.")
-        # loss = self.forward_loss_l1(imgs, pred, mask)
-        return loss, pred, mask
+        
+
+        loss = loss1 + loss2 + cross_loss
+
+
+        return loss, pred1, mask1
 
 
 def mae_vit_tiny(**kwargs):
