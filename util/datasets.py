@@ -109,6 +109,8 @@ class SatelliteDataset(Dataset):
 
         # train transform
         interpol_mode = transforms.InterpolationMode.BICUBIC
+        # TODO: The following paper proposes using bilinear instead of bicubic for interpolation mode
+        # https://arxiv.org/pdf/1511.08861.pdf
 
         t = []
         if is_train:
@@ -116,13 +118,26 @@ class SatelliteDataset(Dataset):
             t.append(transforms.Normalize(mean, std))
             t.append(
                 transforms.RandomResizedCrop(
-                    input_size, scale=(0.2, 1.0), interpolation=interpol_mode
+                    input_size,
+                    scale=(0.2, 1.0),
+                    interpolation=interpol_mode,
+                    antialias=True,
                 ),  # 3 is bicubic
             )
-            t.append(transforms.RandomHorizontalFlip())
+            ###########################################
+            # TODO: Check if these are useful in our case
+            # t.append(transforms.RandomHorizontalFlip())
+            # t.append(transforms.RandomVerticalFlip())
+            # t.append(
+            #     transforms.RandomApply(
+            #         [transforms.ColorJitter(0.2, 0.2, 0.2, 0.2)], p=0.5
+            #     )
+            # )
+            ###########################################
             return transforms.Compose(t)
 
         # eval transform
+        # TODO: These may need adjustment
         if input_size <= 224:
             crop_pct = 224 / 256
         else:
@@ -133,7 +148,7 @@ class SatelliteDataset(Dataset):
         t.append(transforms.Normalize(mean, std))
         t.append(
             transforms.Resize(
-                size, interpolation=interpol_mode
+                size, interpolation=interpol_mode, antialias=True
             ),  # to maintain same ratio w.r.t. 224 images
         )
         t.append(transforms.CenterCrop(input_size))
@@ -143,8 +158,13 @@ class SatelliteDataset(Dataset):
 
 
 class CustomDatasetFromImages(SatelliteDataset):
-    mean = [0.4182007312774658, 0.4214799106121063, 0.3991275727748871]
-    std = [0.28774282336235046, 0.27541765570640564, 0.2764017581939697]
+    # ORIGINAL SatMAE:
+    # mean = [0.4182007312774658, 0.4214799106121063, 0.3991275727748871]
+    # std = [0.28774282336235046, 0.27541765570640564, 0.2764017581939697]
+
+    # UPDATED:
+    mean = [0.40558367, 0.43378946, 0.43175863]
+    std = [0.19208308, 0.19136319, 0.19783947]
 
     def __init__(self, csv_path, transform):
         """
@@ -746,5 +766,6 @@ def build_fmow_dataset(is_train: bool, args) -> SatelliteDataset:
         args.nb_classes = NAIP_CLASS_NUM
     else:
         raise ValueError(f"Invalid dataset type: {args.dataset_type}")
+    print(dataset)
 
     return dataset

@@ -186,8 +186,8 @@ def get_args_parser():
 def main(args):
     args.device = "cuda:1"
     args.attention = "shunted"
-    # root = '/mnt/com1822_HDD_16TB'
-    root = '/data2/HDD_16TB'
+    # root = '/data2/HDD_16TB' # 1822
+    root = '/mnt/com1822_HDD_16TB' # 2044
     # args.model = "shunted_2s_mae_vit_tiny"
     args.model = "shunted_2s_mae_vit_base"
     args.print_level = 3
@@ -195,13 +195,13 @@ def main(args):
         
     
     args.input_size = 64
-    args.batch_size = 1
+    args.batch_size = 512
     args.patch_size = [4, 4]
     args.mask_ratio = 0.75
 
     str_patch_sizes = '|'.join([str(i) for i in args.patch_size])
-    args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv" # 1822
-    # args.train_path = f"{root}/fmow-rgb-preproc/train_{args.input_size}_com2044.csv" # 2044
+    # args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv" # 1822
+    args.train_path = f"{root}/fmow-rgb-preproc/train_{args.input_size}_com2044.csv" # 2044
         
     args.output_dir  = f"demo_models/out_model{args.model}_i{args.input_size}_p{str_patch_sizes}_ratio{args.mask_ratio}"
     
