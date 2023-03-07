@@ -1,23 +1,40 @@
 #!/bin/bash
 
 EPOCHS=200
-BATCH_SIZE=256
+BATCH_SIZE=512
 
 INPUT_SIZE=64
 PATCH_SIZE=8
 
-MODEL="mae_vit_small"
 FFN_NAME="MLP"
-LOSS="l1"
 LR=0.0005
 
-ATTENTION=$1
-if [ -z "$ATTENTION" ]; then
-    echo "Usage: $0 <attention> [additional flags]"
+MODEL=$1
+LOSS=$2
+ATTENTION=$3
+
+if [ -z "$MODEL" ]; then
+    echo "Usage: $0 <model> <loss> <attention> [additional flags]"
+    echo "Losses: mse, l1"
     echo "Attentions: scaled_dot_product, linformer, orthoformer, random, local, nystrom, fourier_mix"
     exit 1
 fi
-# remove the first argument from the list of arguments
+shift
+
+if [ -z "$LOSS" ]; then
+    echo "Usage: $0 <model> <loss> <attention> [additional flags]"
+    echo "Losses: mse, l1"
+    echo "Attentions: scaled_dot_product, linformer, orthoformer, random, local, nystrom, fourier_mix"
+    exit 1
+fi
+shift
+
+if [ -z "$ATTENTION" ]; then
+    echo "Usage: $0 <model> <loss> <attention> [additional flags]"
+    echo "Losses: mse, l1"
+    echo "Attentions: scaled_dot_product, linformer, orthoformer, random, local, nystrom, fourier_mix"
+    exit 1
+fi
 shift
 
 IN_PATH_BASE="../fmow-rgb-preproc"
@@ -35,10 +52,12 @@ python3 main_pretrain.py --use-xformers \
     --train_path "$IN_PATH" \
     --output_dir "$OUT_DIR" \
     --model="$MODEL" \
+    --loss "$LOSS" \
+    --lr "$LR" \
+    --attn_name "$ATTENTION" \
+    --ffn_name="$FFN_NAME" \
     --input_size "$INPUT_SIZE" \
     --patch_size "$PATCH_SIZE" \
     --batch_size "$BATCH_SIZE" \
     --epochs "$EPOCHS" \
-    --loss "$LOSS" \
-    --attn_name "$ATTENTION" \
-    --ffn_name="$FFN_NAME" $@
+    $@
