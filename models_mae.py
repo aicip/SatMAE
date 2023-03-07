@@ -244,7 +244,7 @@ class CrossMaskedAutoencoderShuntedViT(nn.Module):
         # Cross-Prediction
         # may need to be modified to keep size consistency
         self.predictor = MLP(decoder_embed_dim, 
-                             patch_embed.num_patches, 
+                             self.patch_embed1.num_patches, 
                              predictor_hidden_size)
         if self.print_level > 0:
             print(f"predictor.shape: {(decoder_embed_dim,patch_embed.num_patches,predictor_hidden_size)}")
@@ -686,14 +686,19 @@ class CrossMaskedAutoencoderShuntedViT(nn.Module):
         if self.loss == "mse":
             loss1 = self.forward_loss_mse(img1, pred1, mask1)
             loss2 = self.forward_loss_mse(img2, pred2, mask2)
-            cross_loss = self.forward_loss_mse(dec_emd_1[:, 1:, :], cross_pred)
         elif self.loss == "l1":
             loss1 = self.forward_loss_l1(img1, pred1, mask1)
             loss2 = self.forward_loss_l1(img2, pred2, mask2)
-            cross_loss = self.forward_loss_l1(dec_emd_1[:, 1:, :], cross_pred)
         else:
             raise ValueError(f"Loss type {self.loss} not supported.")
+        
+        c_loss = nn.MSELoss()
+        cross_pred = self.predictor(dec_emd_2[:, 1:, :])
+        cross_loss = c_loss(dec_emd_1[:, 1:, :], cross_pred)
+        
         loss = loss1 + loss2 + cross_loss
+        if self.print_level > 1:
+            raise Exception("Stopping because you set the print_level > 1.")
         return loss, pred1, mask1
 
 
