@@ -6,7 +6,7 @@ BATCH_SIZE=512
 INPUT_SIZE=64
 PATCH_SIZE=8
 
-MODEL="mae_vit_tiny_cross"
+MODEL="mae_vit_small"
 FFN_NAME="MLP"
 LOSS="mse"
 LR=0.0005
@@ -40,6 +40,5 @@ python3 main_pretrain.py --use-xformers \
     --batch_size "$BATCH_SIZE" \
     --epochs "$EPOCHS" \
     --loss "$LOSS" \
-    --lr "$LR" \
     --attn_name "$ATTENTION" \
     --ffn_name="$FFN_NAME" $@
