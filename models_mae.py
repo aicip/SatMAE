@@ -243,7 +243,11 @@ class CrossMaskedAutoencoderShuntedViT(nn.Module):
         # MAE decoder specifics
         # Cross-Prediction
         # may need to be modified to keep size consistency
-        self.predictor = MLP(decoder_embed_dim, patch_embed.num_patches, predictor_hidden_size)
+        self.predictor = MLP(decoder_embed_dim, 
+                             patch_embed.num_patches, 
+                             predictor_hidden_size)
+        if self.print_level > 0:
+            print(f"predictor.shape: {(decoder_embed_dim,patch_embed.num_patches,predictor_hidden_size)}")
         self.decoder_embed = nn.Linear(dim_model[-1],  # replaced with shunted equiv
                                        decoder_embed_dim,
                                        bias=True)
@@ -673,6 +677,10 @@ class CrossMaskedAutoencoderShuntedViT(nn.Module):
         pred1, dec_emd_1 = self.forward_decoder(latent1, ids_restore1)  # [N, L, p*p*3]
         pred2, dec_emd_2 = self.forward_decoder(latent2, ids_restore2)  # [N, L, p*p*3]
 
+        print(f"pred1.shape: {pred1.shape}")
+        print(f"dec_emd_1.shape: {dec_emd_1.shape}")
+        print(f"pred2.shape: {pred2.shape}")
+        print(f"dec_emd_2.shape: {dec_emd_2.shape}")
         cross_pred = self.predictor(dec_emd_2[:, 1:, :])
         
         if self.loss == "mse":
@@ -686,7 +694,7 @@ class CrossMaskedAutoencoderShuntedViT(nn.Module):
         else:
             raise ValueError(f"Loss type {self.loss} not supported.")
         loss = loss1 + loss2 + cross_loss
-        return loss, pred, mask
+        return loss, pred1, mask1
 
 
 class MaskedAutoencoderShuntedViT(nn.Module):
