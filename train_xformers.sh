@@ -59,5 +59,4 @@ python3 main_pretrain.py --use-xformers \
     --input_size "$INPUT_SIZE" \
     --patch_size "$PATCH_SIZE" \
     --batch_size "$BATCH_SIZE" \
-    --epochs "$EPOCHS" \
-    $@
+    --epochs "$EPOCHS" $@
