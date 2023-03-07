@@ -470,7 +470,8 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             if self.print_level > 1:
                 print(f"\tOutput x.shape: {x.shape}")
                 if i == self.num_stages - 1:
-                    print(f"\tOutput x.contiguous().shape: {x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous().shape}")
+                    print(
+                        f"\tOutput x.contiguous().shape: {x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous().shape}")
 
         return x, mask, ids_restore
 
@@ -532,7 +533,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         x = x[:, 1:, :]
         if self.print_level > 1:
             print(f"out.x.shape: {x.shape}")
-            
+
         return x
 
     def forward_loss_mse(self, imgs, pred, mask):
@@ -574,9 +575,18 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         pred: [N, L, p*p*3]
         mask: [N, L], 0 is keep, 1 is remove,
         """
-        target = self.patchify(
-            imgs, self.patch_embed.patch_size[0], self.input_channels
-        )
+
+        if self.print_level > 1:
+            print("--"*8, " Loss ", "--"*8)
+            print(f"In mask.shape: {mask.shape}")
+            print(f"In pred.shape: {pred.shape}")
+        target = imgs
+        if self.print_level > 1:
+            print(f"In imgs.shape: {imgs.shape}")
+        stage = self.num_stages - 1
+        self_patch_embed = getattr(self, f"patch_embed{stage + 1}")
+        patch_size = self_patch_embed.patch_size[0]
+        target = self.patchify(target, patch_size, self.input_channels)
         if self.norm_pix_loss:
             mean = target.mean(dim=-1, keepdim=True)
             var = target.var(dim=-1, keepdim=True)
@@ -602,7 +612,6 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         loss = (loss * mask).sum() / mask.sum()
 
         return loss
-
 
     def forward(self, imgs, mask_ratio=0.75):
         latent, mask, ids_restore = self.forward_encoder(imgs)
@@ -678,7 +687,8 @@ class MaskedAutoencoderViT(nn.Module):
                 ffn_activation == "gelu"
             ), f"Feedforward activation {ffn_activation} not supported with use_xformers=False, as Timm's implementation uses gelu"
 
-        self.patch_embed = PatchEmbed(input_size, patch_size, input_channels, dim_model)
+        self.patch_embed = PatchEmbed(
+            input_size, patch_size, input_channels, dim_model)
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, dim_model))
@@ -914,7 +924,8 @@ class MaskedAutoencoderViT(nn.Module):
 
         # keep the first subset
         ids_keep = ids_shuffle[:, :len_keep]
-        x_masked = torch.gather(x, dim=1, index=ids_keep.unsqueeze(-1).repeat(1, 1, D))
+        x_masked = torch.gather(
+            x, dim=1, index=ids_keep.unsqueeze(-1).repeat(1, 1, D))
 
         # generate the binary mask: 0 is keep, 1 is remove
         mask = torch.ones([N, L], device=x.device)
@@ -1186,7 +1197,7 @@ def shunted_2s_mae_vit_small(**kwargs):
         # Encoder
         dim_model=[256, 512],
         encoder_num_layers=[4, 8],
-        encoder_num_heads=[6, 12],
+        encoder_num_heads=[4, 8],
         mlp_ratios=[4, 4],
         sr_ratios=[2, 1],
         # Decoder

@@ -189,15 +189,20 @@ def main(args):
     # root = '/data2/HDD_16TB' # 1822
     root = '/mnt/com1822_HDD_16TB' # 2044
     # args.model = "shunted_2s_mae_vit_tiny"
+    # args.model = "shunted_2s_mae_vit_small"
     args.model = "shunted_2s_mae_vit_base"
     args.print_level = 3
     args.epochs = 1
-        
     
-    args.input_size = 64
-    args.batch_size = 512
-    args.patch_size = [4, 4]
+    # args.lr = 0.0001
+    # args.loss = "mse"
+    args.lr = 0.001
+    args.loss = "l1"
+    
     args.mask_ratio = 0.75
+    args.input_size = 64
+    args.batch_size = 64
+    args.patch_size = [4, 4]
 
     str_patch_sizes = '|'.join([str(i) for i in args.patch_size])
     # args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv" # 1822
@@ -236,7 +241,8 @@ def main(args):
         patch_size=args.patch_size,
         input_channels=dataset_train.in_c,
         norm_pix_loss=args.norm_pix_loss,
-        print_level=args.print_level,)
+        print_level=args.print_level,
+        loss=args.loss)
 
     model.to(device)
 
