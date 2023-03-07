@@ -628,6 +628,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         return loss, pred, mask
 
 
+
 class MaskedAutoencoderViT(nn.Module):
     """Masked Autoencoder with VisionTransformer backbone"""
 
@@ -687,8 +688,7 @@ class MaskedAutoencoderViT(nn.Module):
                 ffn_activation == "gelu"
             ), f"Feedforward activation {ffn_activation} not supported with use_xformers=False, as Timm's implementation uses gelu"
 
-        self.patch_embed = PatchEmbed(
-            input_size, patch_size, input_channels, dim_model)
+        self.patch_embed = PatchEmbed(input_size, patch_size, input_channels, dim_model)
         num_patches = self.patch_embed.num_patches
 
         self.cls_token = nn.Parameter(torch.zeros(1, 1, dim_model))
@@ -924,8 +924,7 @@ class MaskedAutoencoderViT(nn.Module):
 
         # keep the first subset
         ids_keep = ids_shuffle[:, :len_keep]
-        x_masked = torch.gather(
-            x, dim=1, index=ids_keep.unsqueeze(-1).repeat(1, 1, D))
+        x_masked = torch.gather(x, dim=1, index=ids_keep.unsqueeze(-1).repeat(1, 1, D))
 
         # generate the binary mask: 0 is keep, 1 is remove
         mask = torch.ones([N, L], device=x.device)
@@ -1075,7 +1074,6 @@ class MaskedAutoencoderViT(nn.Module):
         # loss = self.forward_loss_l1(imgs, pred, mask)
         return loss, pred, mask
 
-
 # --- MAE Models --- #
 
 def mae_vit_tiny(**kwargs):
@@ -1108,7 +1106,7 @@ def mae_vit_small(**kwargs):
     model = MaskedAutoencoderViT(
         dim_model=512,
         encoder_num_layers=8,
-        encoder_num_heads=12,
+        encoder_num_heads=8,
         decoder_embed_dim=512,
         decoder_num_layers=8,
         decoder_num_heads=16,

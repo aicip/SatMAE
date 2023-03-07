@@ -1,15 +1,24 @@
+import glob
 import os
+import random
+import re
+import time
 from typing import Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
+import PIL
 import torch
 from PIL import Image
 
 import models_mae
 
 # Mean and Std of fmow dataset
-image_mean = np.array([0.4182007312774658, 0.4214799106121063, 0.3991275727748871])
-image_std = np.array([0.28774282336235046, 0.27541765570640564, 0.2764017581939697])
+# image_mean = np.array([0.4182007312774658, 0.4214799106121063, 0.3991275727748871])
+# image_std = np.array([0.28774282336235046, 0.27541765570640564, 0.2764017581939697])
+
+image_mean = np.array([0.40558367, 0.43378946, 0.43175863])
+image_std = np.array([0.19208308, 0.19136319, 0.19783947])
 
 
 def prepare_model(
@@ -34,6 +43,7 @@ def prepare_model(
     Returns:
         The model
     """
+    print("=" * 80)
     checkpoint_folder = os.path.join(chkpt_basedir, chkpt_dir)
 
     if chkpt_name is None:
@@ -55,17 +65,6 @@ def prepare_model(
 
     # build model
     args = vars(checkpoint["args"])
-    if args['attention'] == 'shunted': # Temporary solution
-        sep = '|'
-        to_list = lambda x: [int(y) for y in x.split(sep)]
-        args['patch_sizes'] = to_list(args['patch_sizes'])
-        args['embed_dims'] = to_list(args['embed_dims'])
-        args['depths'] = to_list(args['depths'])
-        args['num_heads'] = to_list(args['num_heads'])
-        args['mlp_ratios'] = to_list(args['mlp_ratios'])
-        args['sr_ratios'] = to_list(args['sr_ratios'])
-        args['print_level'] = 0
-    
     print("args:", args)
     model = getattr(models_mae, arch)(**args)
     # load model
@@ -84,7 +83,6 @@ def prepare_image(image_uri, model, resample=None):
     """
     img = Image.open(image_uri)
 
-        
     img_size = model.input_size
     img_chans = model.input_channels
 
@@ -116,23 +114,11 @@ def add_noise(image, noise_type="gaussian", noise_param=0.1):
     return noisy_image
 
 
-def show_image(image, ax=None, title=""):
-    # image is [H, W, 3]
-    assert image.shape[2] == 3
-    ax.imshow(torch.clip((image * image_std + image_mean) * 255, 0, 255).int())
-    ax.set_title(title)
-    ax.axis("off")
-    return
-
-
 def run_one_image(img, model, seed: Optional[int] = None):
     if seed is not None:
         torch.manual_seed(seed)
-    
-    if 'num_stages' in model.__dict__:
-        patch_size = model.patch_sizes[-1]
-    else:
-        patch_size = model.patch_size
+
+    patch_size = model.patch_size
     channels = model.input_channels
 
     # print("Patch Size:", patch_size)
@@ -151,17 +137,9 @@ def run_one_image(img, model, seed: Optional[int] = None):
 
     # visualize the mask
     mask = mask.detach()
-    if 'num_stages' in model.__dict__:
-        stage = model.num_stages - 1
-        self_patch_embed = getattr(model, f"patch_embed{stage + 1}")
-        patch_size = self_patch_embed.patch_size[0]
-        mask = mask.unsqueeze(-1).repeat(
-            1, 1, patch_size ** 2 * 3
-        )  # (N, H*W, p*p*3)
-    else:
-        mask = mask.unsqueeze(-1).repeat(
-            1, 1, model.patch_embed.patch_size[0] ** 2 * 3
-        )  # (N, H*W, p*p*3)
+    mask = mask.unsqueeze(-1).repeat(
+        1, 1, model.patch_embed.patch_size[0] ** 2 * 3
+    )  # (N, H*W, p*p*3)
     mask = model.unpatchify(
         mask, p=patch_size, c=channels
     )  # 1 is removing, 0 is keeping
@@ -177,3 +155,142 @@ def run_one_image(img, model, seed: Optional[int] = None):
     im_paste = im_masked + y_mask
 
     return x, im_masked, y, im_paste
+
+
+def show_image(image, ax=None, title=""):
+    # image is [H, W, 3]
+    assert image.shape[2] == 3
+    ax.imshow(torch.clip((image * image_std + image_mean) * 255, 0, 255).int())
+    ax.set_title(title)
+    ax.axis("off")
+    return
+
+
+def plot_comp(
+    image,
+    models,
+    maskseed=None,
+    use_noise=None,
+    resample=None,
+    title=None,
+    figsize=12,
+    savedir="plots",
+    save=False,
+):
+    """
+    :param resample: An optional resampling filter.  This can be
+           one `Resampling.NEAREST`, `Resampling.BOX`,
+           `Resampling.BILINEAR`, `Resampling.HAMMING`,
+           `Resampling.BICUBIC`, `Resampling.LANCZOS`.
+    """
+    # if model is not an array, make it an array
+    if not isinstance(models, dict):
+        models = {"model": models}
+
+    fig, axs = plt.subplots(
+        len(models), 4, figsize=(figsize, len(models) * figsize / 4)
+    )
+
+    if title is not None:
+        fig.suptitle(title)
+
+    # make the plt figure larger
+    # plt.rcParams["figure.figsize"] = [figsize, figsize]
+    for model_i, (model_name, model) in enumerate(models.items()):
+        # if img is string
+        if isinstance(image, str):
+            img = prepare_image(image, model, resample=resample)
+        else:
+            img = image
+
+        if use_noise is not None:
+            img = add_noise(img, noise_type=use_noise[0], noise_param=use_noise[1])
+
+        x, im_masked, y, im_paste = run_one_image(img, model, seed=maskseed)
+
+        imgs = [x[0], im_masked[0], y[0], im_paste[0]]
+        titles = [
+            "Original",
+            "Masked",
+            f"{model_name} Reconstruction",
+            "Reconstruction + Visible",
+        ]
+
+        for i in range(4):
+            ax = axs[model_i, i] if len(models) > 1 else axs[i]
+            show_image(imgs[i], ax, titles[i])
+
+    plt.tight_layout()
+    if save:
+        if title is not None:
+            # replace any symbols with dashes and spaces with underscores
+            # replace symbols with dashes
+            save_fname = title.replace("-", "")
+            save_fname = re.sub(r"[^\w\s]", "-", save_fname)
+            # replace spaces with underscores
+            save_fname = re.sub(r"\s+", "_", save_fname)
+
+            # if folder does not exist, create it
+            if not os.path.exists(savedir):
+                os.makedirs(savedir)
+            plt.savefig(os.path.join(savedir, f"plot_viz_{save_fname}.png"))
+        else:
+            print("INFO: Skipped saving because title was not provided")
+    plt.show()
+
+
+def plot_comp_many(
+    models: dict,
+    basedir: str,
+    max_img_samples: int = 10,
+    num_run_each: int = 1,
+    random_walk: bool = False,
+    walkseed: Optional[int] = None,  # Only used if random_walk is True
+    maskseed: Optional[int] = None,
+    use_noise: Optional[tuple] = None,  # ex: ("gaussian", 0.25)
+    resample=PIL.Image.Resampling.BICUBIC,
+    base_title: Optional[str] = None,
+    save=False,
+):
+    # for img_path in glob.iglob(basedir + '**/*.jpg', recursive=True):
+    if walkseed is not None:
+        if not random_walk:
+            print("WARNING: Walkseed only used if random_walk is True")
+        random.seed(walkseed)
+
+    def get_image(path_pattern: str):
+        if random_walk:
+            for _ in range(max_img_samples):
+                yield random.choice(glob.glob(path_pattern, recursive=True))
+        else:
+            for i, img_path in enumerate(glob.iglob(path_pattern, recursive=True)):
+                if i >= max_img_samples:
+                    break
+                yield img_path
+
+    for img_path in get_image(f"{basedir}/**/*.jpg"):
+        for _ in range(num_run_each):
+            mseed = int(time.time() * 1000) if maskseed is None else maskseed
+            base_fname = os.path.basename(img_path)
+            title = (
+                f"{base_title} - {base_fname}" if base_title is not None else base_fname
+            )
+            plot_comp(
+                img_path,
+                models,
+                maskseed=mseed,
+                title=title,
+                use_noise=None,
+                resample=resample,
+                save=save,
+            )
+            if use_noise is not None:
+                plot_comp(
+                    img_path,
+                    models,
+                    maskseed=mseed,
+                    use_noise=use_noise,
+                    title=f"{title} - {use_noise[0]} noise {use_noise[1]}",
+                    resample=resample,
+                    save=save,
+                )

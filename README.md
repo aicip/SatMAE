@@ -28,21 +28,21 @@ Requires `timm` library version 0.4.12 due to changes in later versions.
 pip install timm==0.4.12
 ```
 
+## Number of Parameters
+
+- Attention: `scaled_dot_product` & MLP Type: `MLP` (Not `FusedMLP`)
+  - `mae_vit_mini`: `4,059,584`
+  - `mae_vit_mini`: `40,303,872`
+  - `mae_vit_small`: `57,796,352`
+  - `mae_vit_base`: `111,655,680`
+  - `mae_vit_large`: `329,239,296`
+  - Xformers and Timm implementations are roughly the same in terms of number of parameters, so assume the following numbers are the same for both implementations.
+
 ## Xformers Implementation Notes
 
-All of the following tests & metrics assume the following configuration:
-
-- Batch Size: 64 (5680 steps per epoch)
-
-TODO: Test memory, speed, and accuracy of TF32
-
 ```
-torch.backends.cuda.matmul.allow_tf32 = True
+python -m xformers.info
 ```
-
-TODO: Test MLP vs FusedMLP in Xformers TransformerBlock
-
-TODO: Look into sliced attention (not sure if it's implemented in Xformers)
 
 ### Attention Types
 
@@ -78,19 +78,6 @@ The following measurements use `reversible=False` and `MLP` arguments in Transfo
   - 128x128 - `time: 0.1689 max mem: 6864`
     - mem/step ratio `1.208`
   - % difference: `(1.273 - 1.208) / 1.208 = 0.054`
-- nystrom
-  - TODO
-- orthoformer
-  - TODO
-- others:
-  - random
-  - favor
-  - global
-  - local
-  - pooling
-  - blocksparse
-  - lambda
-  - compositional
 
 The following measurements use `reversible=True` and `MLP` arguments in Transformer block.  
 This helps save memory but impacts step time negatively.
@@ -105,15 +92,6 @@ This helps save memory but impacts step time negatively.
   - `time: 0.2279 max mem: 5205`
 - orthoformer
   - `time: 0.8514 max mem: 5163`
-- others:
-  - random
-  - favor
-  - global
-  - local
-  - pooling
-  - blocksparse
-  - lambda
-  - compositional
 
 ## Temporal SatMAE
 
@@ -128,6 +106,7 @@ You can download the fMoW dataset [here](https://github.com/fMoW/dataset). Then 
 After you download the dataset and metadata files, your directory should look like:
 
 ```
+
 <PATH_TO_DATASET_ROOT_FOLDER>
 --- train_62classes.csv
 --- val_62classes.csv
@@ -138,6 +117,7 @@ After you download the dataset and metadata files, your directory should look li
 ------- val
 ---------- airport
 ---------- ...
+
 ```
 
 ### Pretraining
