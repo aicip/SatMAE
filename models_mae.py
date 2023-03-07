@@ -1893,3 +1893,22 @@ def shunted_2s_mae_vit_base(**kwargs):
         **kwargs,
     )
     return model
+
+
+# --- Cross Prediction Shunted Models --- #
+
+def cross_shunted_2s_mae_vit_tiny(**kwargs):
+    model = CrossMaskedAutoencoderShuntedViT(
+        # Encoder
+        dim_model=[64, 128],
+        encoder_num_layers=[2, 4],
+        encoder_num_heads=[4, 8],
+        mlp_ratios=[4, 4],
+        sr_ratios=[2, 1],
+        # Decoder
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        **kwargs
+    )
+    return model

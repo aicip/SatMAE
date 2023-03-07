@@ -188,9 +188,10 @@ def main(args):
     args.attn_name = "shunted"
     # root = '/data2/HDD_16TB' # 1822
     root = '/mnt/com1822_HDD_16TB' # 2044
-    args.model = "shunted_2s_mae_vit_tiny"
+    # args.model = "shunted_2s_mae_vit_tiny"
     # args.model = "shunted_2s_mae_vit_small"
     # args.model = "shunted_2s_mae_vit_base"
+    args.model = "cross_shunted_2s_mae_vit_tiny"
     args.print_level = 3
     args.epochs = 1
     
@@ -202,7 +203,7 @@ def main(args):
     # args.mask_ratio = 0.60
     args.mask_ratio = 0.75
     args.input_size = 64
-    args.batch_size = 64
+    args.batch_size = 512
     args.patch_size = '4|4'
 
     # args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv" # 1822
