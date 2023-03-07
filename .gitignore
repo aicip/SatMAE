@@ -169,4 +169,6 @@ logs/
 
 *.csv
 tmp_*
-out_*
+out_
+logs/*
+tmp.*

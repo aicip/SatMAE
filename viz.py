@@ -8,15 +8,17 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import PIL
-import skimage
 import torch
 from PIL import Image
 
 import models_mae
 
 # Mean and Std of fmow dataset
-image_mean = np.array([0.4182007312774658, 0.4214799106121063, 0.3991275727748871])
-image_std = np.array([0.28774282336235046, 0.27541765570640564, 0.2764017581939697])
+# image_mean = np.array([0.4182007312774658, 0.4214799106121063, 0.3991275727748871])
+# image_std = np.array([0.28774282336235046, 0.27541765570640564, 0.2764017581939697])
+
+image_mean = np.array([0.40558367, 0.43378946, 0.43175863])
+image_std = np.array([0.19208308, 0.19136319, 0.19783947])
 
 
 def prepare_model(
@@ -44,12 +46,50 @@ def prepare_model(
     print("=" * 80)
     checkpoint_folder = os.path.join(chkpt_basedir, chkpt_dir)
 
-    if chkpt_name is None:
-        # List the directory and find the checkpoint with the highest epoch
-        checkpoint_list = os.listdir(checkpoint_folder)
-        checkpoint_list = [x for x in checkpoint_list if x.endswith(".pth")]
-        checkpoint_list.sort(key=lambda x: int(x.split("-")[1].split(".")[0]))
-        chkpt_name = checkpoint_list[-1]
+    try:
+        if chkpt_name is None:
+            # List the directory and find the checkpoint with the highest epoch
+            checkpoint_list = os.listdir(checkpoint_folder)
+            checkpoint_list = [x for x in checkpoint_list if x.endswith(".pth")]
+            checkpoint_list.sort(key=lambda x: int(x.split("-")[1].split(".")[0]))
+            chkpt_name = checkpoint_list[-1]
+    except FileNotFoundError as e:
+        print("Checkpoint folder not found: ", checkpoint_folder)
+        print(f"Checkpoint basedir: {chkpt_basedir}")
+        print("Did you mean any of these?")
+        # print only folders that contain .pth files
+        potential_folders = []
+        for folder in glob.glob(f"{chkpt_basedir}/**/*", recursive=True):
+            if len(glob.glob(f"{folder}/*.pth")) > 0:
+                # also print time last modified in time ago format
+                last_modified = os.path.getmtime(folder)
+                time_agos = [
+                    "sec",
+                    "min",
+                    "hrs",
+                    "days",
+                    "wks",
+                    "mts",
+                    "yrs",
+                ]
+                potential_folders.append((folder, last_modified))
+
+        potential_folders.sort(key=lambda x: x[1], reverse=True)
+
+        for folder, last_modified in potential_folders:
+            last_modified = time.time() - last_modified
+            time_ago = "some time"
+            for time_ago_ in time_agos:
+                time_ago = time_ago_
+                if last_modified < 60:
+                    break
+                last_modified = last_modified / 60
+
+            last_modified = f"{last_modified:.1f} {time_ago} ago"
+            folderpath_clean = folder.replace(chkpt_basedir, "").strip("/")
+            print(f" - {folderpath_clean:<100} ({last_modified})")
+
+        raise e
 
     if not chkpt_name.endswith(".pth"):
         chkpt_name = f"{chkpt_name}.pth"

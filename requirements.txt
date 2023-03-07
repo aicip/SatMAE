@@ -5,5 +5,5 @@ rasterio>=1.1.0
 tensorboard==2.6.0
 protobuf<=3.20.0
 xformers==0.0.16
-scikit-image==0.19.3
+jupyter
 matplotlib==3.6.2
