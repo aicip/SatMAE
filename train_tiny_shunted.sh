@@ -10,7 +10,10 @@ BATCH_SIZE=256tm
 PATCH_SIZES="4|4"
 # MASK_RATIO='0.60'
 MASK_RATIO='0.60'
-LR=0.0001
+# LR=0.0001
+# LOSS="mse"
+LR=0.001
+LOSS="l1"
 
 PRINT_LEVEL=1
 ATTENTION="shunted"
@@ -32,7 +35,7 @@ OUT_DIR_BASE="/data2/HDD_16TB/ICCV/Model_Saving"
 # Data path for com2044
 # OUT_DIR_BASE="/mnt/com1822_HDD_16TB/ICCV/Model_Saving"
 
-OUT_DIR="${OUT_DIR_BASE}/out_${MODEL}_i${INPUT_SIZE}_p${PATCH_SIZES}_e${EPOCHS}_${ATTENTION}_ratio${MASK_RATIO}_lr${LR}"
+OUT_DIR="${OUT_DIR_BASE}/out_${MODEL}_i${INPUT_SIZE}_p${PATCH_SIZES}_e${EPOCHS}_${ATTENTION}_ratio${MASK_RATIO}_lr${LR}_loss${LOSS}"
 
 WANDB="satmae"
 
@@ -48,5 +51,6 @@ python3 main_pretrain.py \
 --print_level "${PRINT_LEVEL}" \
 --model "${MODEL_NAME}" \
 --lr "${LR}" \
+--loss "${LOSS}" \
 --mask_ratio "${MASK_RATIO}" \
 --wandb "${WANDB}" $@

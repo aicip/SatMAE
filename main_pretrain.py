@@ -316,6 +316,7 @@ def main(args):
                 in_chans=dataset_train.in_c,
                 norm_pix_loss=args.norm_pix_loss,
                 print_level=args.print_level
+                loss=args.loss
             )
         else:
             model = models_mae.__dict__[args.model](**vars(args))
