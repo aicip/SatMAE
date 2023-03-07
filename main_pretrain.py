@@ -62,10 +62,8 @@ def get_args_parser():
         help="Name of model to train",
     )
 
-    parser.add_argument("--input_size", default=128,
-                        type=int, help="images input size")
-    parser.add_argument("--patch_size", default=16,
-                        type=str, help="images input size")
+    parser.add_argument("--input_size", default=128, type=int, help="images input size")
+    parser.add_argument("--patch_size", default=16, type=str, help="images input size")
     parser.add_argument(
         "--attn_name",
         default="scaled_dot_product",
@@ -154,7 +152,7 @@ def get_args_parser():
     # Dataset parameters
     parser.add_argument(
         "--train_path",
-        default="/data2/HDD_16TB/fmow-rgb-preproc/train_224.csv",
+        default="/data2/HDD_16TB/fmow-rgb-preproc/train_128.csv",
         type=str,
         help="Train .csv path",
     )
@@ -299,14 +297,13 @@ def main(args):
         )
     # non-spatial, non-temporal
     else:
-        if args.attn_name == 'shunted':
-            if 'shunted' not in args.model:
-                raise ValueError(
-                    'shunted attention only supported for shunted models')
-            sep = '|'
+        if args.attn_name == "shunted":
+            if "shunted" not in args.model:
+                raise ValueError("shunted attention only supported for shunted models")
+            sep = "|"
             to_list = lambda x: [int(y) for y in x.split(sep)]
             args.patch_size = to_list(args.patch_size)  # e.g. '16|16' -> [16, 16]
-            
+
         model = models_mae.__dict__[args.model](**vars(args))
     model.to(device)
 
@@ -335,8 +332,7 @@ def main(args):
     #######################################################################################
     print("=" * 80)
     # following timm: set wd as 0 for bias and norm layers
-    param_groups = optim_factory.add_weight_decay(
-        model_without_ddp, args.weight_decay)
+    param_groups = optim_factory.add_weight_decay(model_without_ddp, args.weight_decay)
     optimizer = torch.optim.AdamW(param_groups, lr=args.lr, betas=(0.9, 0.95))
     print(optimizer)
     loss_scaler = NativeScaler()
