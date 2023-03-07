@@ -1,7 +1,7 @@
 #!/bin/bash
 
 EPOCHS=200
-BATCH_SIZE=512
+BATCH_SIZE=256
 
 INPUT_SIZE=64
 PATCH_SIZE=8
@@ -9,7 +9,7 @@ PATCH_SIZE=8
 MODEL="mae_vit_small"
 FFN_NAME="MLP"
 LOSS="mse"
-LR=0.001
+LR=0.0005
 
 ATTENTION=$1
 if [ -z "$ATTENTION" ]; then

@@ -9,7 +9,7 @@ PATCH_SIZE=8
 MODEL="mae_vit_tiny"
 FFN_NAME="MLP"
 LOSS="mse"
-LR=0.001
+LR=0.0005
 
 ATTENTION="scaled_dot_product"
 
