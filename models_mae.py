@@ -504,8 +504,6 @@ class MaskedAutoencoderViT(nn.Module):
         pred1, dec_emd_1 = self.forward_decoder(latent1, ids_restore1)  # [N, L, p*p*3]
         pred2, dec_emd_2 = self.forward_decoder(latent2, ids_restore2)  # [N, L, p*p*3]
 
-        cross_pred = self.predictor(dec_emd_2[:, 1:, :])
-
         
 
         # latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
@@ -515,14 +513,17 @@ class MaskedAutoencoderViT(nn.Module):
         if self.loss == "mse":
             loss1 = self.forward_loss_mse(img1, pred1, mask1)
             loss2 = self.forward_loss_mse(img2, pred2, mask2)
-            cross_loss = self.forward_loss_mse(dec_emd_1[:, 1:, :], cross_pred)
+            # cross_loss = self.forward_loss_mse(dec_emd_1[:, 1:, :], cross_pred)
         elif self.loss == "l1":
             loss1 = self.forward_loss_l1(img1, pred1, mask1)
             loss2 = self.forward_loss_l1(img2, pred2, mask2)
-            cross_loss = self.forward_loss_l1(dec_emd_1[:, 1:, :], cross_pred)
+            # cross_loss = self.forward_loss_l1(dec_emd_1[:, 1:, :], cross_pred)
         else:
             raise ValueError(f"Loss type {self.loss} not supported.")
         
+        c_loss = nn.MSELoss()
+        cross_pred = self.predictor(dec_emd_2[:, 1:, :])
+        cross_loss = c_loss(dec_emd_1[:, 1:, :], cross_pred)
 
         loss = loss1 + loss2 + cross_loss
 
