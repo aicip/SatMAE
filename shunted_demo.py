@@ -184,7 +184,7 @@ def get_args_parser():
 
 
 def main(args):
-    args.device = "cuda:1"
+    args.device = "cuda:0"
     args.attn_name = "shunted"
     # root = '/data2/HDD_16TB' # 1822
     root = '/mnt/com1822_HDD_16TB' # 2044
@@ -203,7 +203,7 @@ def main(args):
     # args.mask_ratio = 0.60
     args.mask_ratio = 0.75
     args.input_size = 64
-    args.batch_size = 512
+    args.batch_size = 256
     args.patch_size = '4|4'
 
     # args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv" # 1822

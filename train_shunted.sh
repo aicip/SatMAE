@@ -6,7 +6,7 @@ DEVICE="cuda:0"
 EPOCHS=200
 
 INPUT_SIZE=64
-BATCH_SIZE=128
+BATCH_SIZE=256
 
 PATCH_SIZES="4|4"
 MASK_RATIO='0.75'
@@ -21,8 +21,9 @@ ATTENTION="shunted"
 
 # MODEL_NAME="shunted_2s_mae_vit_tiny"
 # MODEL_NAME="shunted_2s_mae_vit_mini"
-MODEL_NAME="shunted_2s_mae_vit_small"
+# MODEL_NAME="shunted_2s_mae_vit_small"
 # MODEL_NAME="shunted_2s_mae_vit_base"
+MODEL_NAME="cross_shunted_2s_mae_vit_tiny"
 
 # Data path for com1822:
 # IN_PATH_BASE="/data2/HDD_16TB"
