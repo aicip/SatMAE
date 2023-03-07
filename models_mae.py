@@ -1888,6 +1888,7 @@ def mae_vit_small_cross(**kwargs):
         decoder_num_layers=8,
         decoder_num_heads=16,
         predictor_hidden_size=2048,
+        **kwargs,
     )
     return model
 
@@ -1914,6 +1915,7 @@ def mae_vit_base_cross(**kwargs):
         decoder_num_layers=8,
         decoder_num_heads=16,
         predictor_hidden_size=2048,
+        **kwargs,
     )
     return model
 
