@@ -1165,7 +1165,7 @@ def shunted_2s_mae_vit_tiny(**kwargs):
 
 
 def shunted_2s_mae_vit_mini(**kwargs):
-    model = MaskedAutoencoderViT(
+    model = MaskedAutoencoderShuntedViT(
         # Encoder
         dim_model=[128, 256],
         encoder_num_layers=[2, 4],
@@ -1182,7 +1182,7 @@ def shunted_2s_mae_vit_mini(**kwargs):
 
 
 def shunted_2s_mae_vit_small(**kwargs):
-    model = MaskedAutoencoderViT(
+    model = MaskedAutoencoderShuntedViT(
         # Encoder
         dim_model=[256, 512],
         encoder_num_layers=[4, 8],
@@ -1199,7 +1199,7 @@ def shunted_2s_mae_vit_small(**kwargs):
 
 
 def shunted_2s_mae_vit_base(**kwargs):
-    model = MaskedAutoencoderViT(
+    model = MaskedAutoencoderShuntedViT(
         # Encoder
         dim_model=[512, 768],
         encoder_num_layers=[8, 12],
