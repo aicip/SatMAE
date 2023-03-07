@@ -304,19 +304,10 @@ def main(args):
                 raise ValueError(
                     'shunted attention only supported for shunted models')
             sep = '|'
-            def to_list(x): return [int(y) for y in x.split(sep)]
-            patch_sizes = to_list(args.patch_size)
-
-            model = models_mae.__dict__[args.model](
-                input_size=args.input_size,
-                patch_size=patch_sizes,
-                in_chans=dataset_train.in_c,
-                norm_pix_loss=args.norm_pix_loss,
-                print_level=args.print_level,
-                loss=args.loss
-            )
-        else:
-            model = models_mae.__dict__[args.model](**vars(args))
+            to_list = lambda x: [int(y) for y in x.split(sep)]
+            args.patch_size = to_list(args.patch_size)  # e.g. '16|16' -> [16, 16]
+            
+        model = models_mae.__dict__[args.model](**vars(args))
     model.to(device)
 
     model_without_ddp = model

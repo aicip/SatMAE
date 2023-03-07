@@ -171,3 +171,4 @@ logs/
 tmp_*
 out_
 logs/*
+tmp.*

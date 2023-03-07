@@ -185,12 +185,12 @@ def get_args_parser():
 
 def main(args):
     args.device = "cuda:1"
-    args.attention = "shunted"
+    args.attn_name = "shunted"
     # root = '/data2/HDD_16TB' # 1822
     root = '/mnt/com1822_HDD_16TB' # 2044
-    # args.model = "shunted_2s_mae_vit_tiny"
+    args.model = "shunted_2s_mae_vit_tiny"
     # args.model = "shunted_2s_mae_vit_small"
-    args.model = "shunted_2s_mae_vit_base"
+    # args.model = "shunted_2s_mae_vit_base"
     args.print_level = 3
     args.epochs = 1
     
@@ -199,16 +199,16 @@ def main(args):
     args.lr = 0.001
     args.loss = "l1"
     
+    # args.mask_ratio = 0.60
     args.mask_ratio = 0.75
     args.input_size = 64
     args.batch_size = 64
-    args.patch_size = [4, 4]
+    args.patch_size = '4|4'
 
-    str_patch_sizes = '|'.join([str(i) for i in args.patch_size])
     # args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv" # 1822
     args.train_path = f"{root}/fmow-rgb-preproc/train_{args.input_size}_com2044.csv" # 2044
         
-    args.output_dir  = f"demo_models/out_model{args.model}_i{args.input_size}_p{str_patch_sizes}_ratio{args.mask_ratio}"
+    args.output_dir  = f"demo_models/out_model{args.model}_i{args.input_size}_p{args.patch_size}_ratio{args.mask_ratio}"
     
     if args.output_dir:
         Path(args.output_dir).mkdir(parents=True, exist_ok=True)
@@ -236,13 +236,15 @@ def main(args):
     )
 
     # define the model
-    model = models_mae.__dict__[args.model](
-        input_size=args.input_size,
-        patch_size=args.patch_size,
-        input_channels=dataset_train.in_c,
-        norm_pix_loss=args.norm_pix_loss,
-        print_level=args.print_level,
-        loss=args.loss)
+    if args.attn_name == 'shunted':
+        if 'shunted' not in args.model:
+            raise ValueError(
+                'shunted attention only supported for shunted models')
+        sep = '|'
+        to_list = lambda x: [int(y) for y in x.split(sep)]
+        args.patch_size = to_list(args.patch_size)  # e.g. '16|16' -> [16, 16]
+            
+    model = models_mae.__dict__[args.model](**vars(args))
 
     model.to(device)
 
