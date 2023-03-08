@@ -188,10 +188,10 @@ def main(args):
     args.attn_name = "shunted"
     # root = '/data2/HDD_16TB' # 1822
     root = '/mnt/com1822_HDD_16TB' # 2044
-    # args.model = "shunted_2s_mae_vit_tiny"
+    args.model = "shunted_2s_mae_vit_tiny"
     # args.model = "shunted_2s_mae_vit_small"
     # args.model = "shunted_2s_mae_vit_base"
-    args.model = "cross_shunted_2s_mae_vit_tiny"
+    # args.model = "shunted_2s_mae_vit_tiny_cross"
     args.print_level = 3
     args.epochs = 1
     
