@@ -14,7 +14,6 @@ import traceback
 from pathlib import Path
 
 import numpy as np
-
 # assert timm.__version__ == "0.3.2"  # version check
 import timm.optim.optim_factory as optim_factory
 import torch
@@ -525,7 +524,7 @@ def main(args):
                 if args.wandb_project is not None:
                     # add the plot image to wandb
                     if plot_img_data is not None:
-                        wandb.log({"val_plot": wandb.Image(plot_img_data)})
+                        log_stats.update({"val_plot": wandb.Image(plot_img_data)})
 
                     wandb.log(log_stats)
             except ValueError as e:
