@@ -346,18 +346,23 @@ def main(args):
 
     #######################################################################################
     print("=" * 80)
-    # Set up wandb
-    if global_rank == 0 and args.wandb is not None:
-        # get pc hostname
-        wandb.init(project=args.wandb, entity=args.wandb_entity)
-        wandb.config.update(args)
-        wandb.watch(model)
+    model_params = filter(lambda p: p.requires_grad, model.parameters())
+    model_num_params = sum(np.prod(p.size()) for p in model_params)
+    print(f"Number of trainable parameters: {model_num_params}")
 
     #######################################################################################
     print("=" * 80)
-    model_parameters = filter(lambda p: p.requires_grad, model.parameters())
-    params = sum([np.prod(p.size()) for p in model_parameters])
-    print(f"Number of trainable parameters: {params}")
+    # Set up WandB
+    if global_rank == 0 and args.wandb is not None:
+        wandb.init(
+            project=args.wandb,
+            entity=args.wandb_entity,
+            group=args.model,
+            job_type="pretrain",
+        )
+        wandb.config.update(args)
+        wandb.config.update({"num_params": model_num_params})
+        wandb.watch(model)
 
     # Logging
     if global_rank == 0 and args.log_dir is not None:
