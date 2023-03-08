@@ -87,6 +87,8 @@ class MetricLogger(object):
         self.meters = defaultdict(SmoothedValue)
         self.delimiter = delimiter
 
+        self.MB = 1024.0 * 1024.0
+
     def update(self, **kwargs):
         for k, v in kwargs.items():
             if v is None:
@@ -136,24 +138,24 @@ class MetricLogger(object):
             log_msg.append("memory: {memory:.0f}")
 
         log_msg = self.delimiter.join(log_msg)
-        MB = 1024.0 * 1024.0
+
         for i, obj in enumerate(iterable):
             data_time.update(time.time() - end)
             yield obj
             iter_time.update(time.time() - end)
             if i % print_freq == 0 or i == len(iterable) - 1:
                 eta_seconds = iter_time.global_avg * (len(iterable) - i)
-                eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
+                eta_str = str(datetime.timedelta(seconds=int(eta_seconds)))
                 if torch.cuda.is_available():
                     print(
                         log_msg.format(
                             i,
                             len(iterable),
-                            eta=eta_string,
+                            eta=eta_str,
                             meters=str(self),
-                            time=str(iter_time),
-                            data=str(data_time),
-                            memory=torch.cuda.max_memory_allocated() / MB,
+                            iter_time=str(iter_time),
+                            data_time=str(data_time),
+                            memory=torch.cuda.max_memory_allocated() / self.MB,
                         )
                     )
                 else:
@@ -161,10 +163,10 @@ class MetricLogger(object):
                         log_msg.format(
                             i,
                             len(iterable),
-                            eta=eta_string,
+                            eta=eta_str,
                             meters=str(self),
-                            time=str(iter_time),
-                            data=str(data_time),
+                            iter_time=str(iter_time),
+                            data_time=str(data_time),
                         )
                     )
             end = time.time()
