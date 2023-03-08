@@ -187,11 +187,8 @@ def get_args_parser():
 
     parser.add_argument(
         "--output_dir",
-        default="./outputs",
+        default=None,
         help="path where to save, empty for no saving",
-    )
-    parser.add_argument(
-        "--log_dir", default="./logs", help="path where to tensorboard log"
     )
     parser.add_argument(
         "--device", default="cuda", help="device to use for training / testing"
@@ -312,15 +309,15 @@ def main(args):
 
     #######################################################################################
     print("=" * 80)
-    eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
+    batch_size_eff = args.batch_size * args.accum_iter * misc.get_world_size()
 
     print("accumulate grad iterations: %d" % args.accum_iter)
-    print("effective batch size: %d" % eff_batch_size)
+    print("effective batch size: %d" % batch_size_eff)
 
     if args.lr is None:  # only base_lr is specified
-        args.lr = args.blr * eff_batch_size / 256
+        args.lr = args.blr * batch_size_eff / 256
 
-    print("base lr: %.2e" % (args.lr * 256 / eff_batch_size))
+    print("base lr: %.2e" % (args.lr * 256 / batch_size_eff))
     print("actual lr: %.2e" % args.lr)
 
     if args.distributed:
@@ -344,32 +341,52 @@ def main(args):
         loss_scaler=loss_scaler,
     )
 
-    #######################################################################################
     print("=" * 80)
     model_params = filter(lambda p: p.requires_grad, model.parameters())
     model_num_params = sum(np.prod(p.size()) for p in model_params)
-    print(f"Number of trainable parameters: {model_num_params}")
+    print(f"Trainable parameters: {model_num_params}")
 
     #######################################################################################
+    # Set up output directory, checkpointing, and logging
     print("=" * 80)
-    # Set up WandB
-    if global_rank == 0 and args.wandb is not None:
-        wandb.init(
-            project=args.wandb,
-            entity=args.wandb_entity,
-            group=args.model,
-            job_type="pretrain",
-        )
-        wandb.config.update(args)
-        wandb.config.update({"num_params": model_num_params})
-        wandb.watch(model)
 
-    # Logging
-    if global_rank == 0 and args.log_dir is not None:
-        os.makedirs(args.log_dir, exist_ok=True)
-        log_writer = SummaryWriter(log_dir=args.log_dir)
+    if args.output_dir is not None:
+        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     else:
-        log_writer = None
+        args.output_dir = [
+            "out",
+            args.model,
+            f"xformers-{args.attn_name}-{args.ffn_name}"
+            if args.use_xformers
+            else f"{args.attn_name}",
+            f"i{args.input_size}-p{args.patch_size}-mr{args.mask_ratio}",
+            f"e{args.epochs}-we{args.warmup_epochs}-lr{args.lr}",
+            f"b{args.batch_size}-a{args.accum_iter}",
+            f"{args.loss_type}{'-normpix' if args.norm_pix_loss else ''}",
+        ]
+
+    log_writer = None
+    if global_rank == 0:
+        if args.wandb is not None:
+            wandb.init(
+                project=args.wandb,
+                entity=args.wandb_entity,
+                group=args.model,
+                job_type="pretrain",
+            )
+            wandb.config.update(args)
+            wandb.config.update({"num_params": model_num_params})
+            wandb.watch(model)
+        else:
+            print("INFO: Not using wandb.")
+
+        # Logging
+        if args.output_dir is not None:
+            output_dir_tb = os.path.join(args.output_dir, "tensorboard")
+            log_writer = SummaryWriter(log_dir=output_dir_tb)
+            print(f"INFO: Tensorboard log path: {output_dir_tb}")
+        else:
+            print("INFO: Not logging to tensorboard.")
 
     #######################################################################################
     print(f"Start training for {args.epochs} epochs")
@@ -420,7 +437,7 @@ def main(args):
             if log_writer is not None:
                 log_writer.flush()
             with open(
-                os.path.join(args.output_dir, "log.txt"), mode="a", encoding="utf-8"
+                os.path.join(args.output_dir, "log.jsonl"), mode="a", encoding="utf-8"
             ) as f:
                 f.write(json.dumps(log_stats) + "\n")
 
@@ -439,6 +456,4 @@ def main(args):
 if __name__ == "__main__":
     args = get_args_parser()
     args = args.parse_args()
-    if args.output_dir:
-        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     main(args)
