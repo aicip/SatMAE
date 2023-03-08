@@ -309,11 +309,10 @@ def main(args):
     dataset_train = build_fmow_dataset(is_train=True, args=args)
     print(dataset_train)
 
-    global_rank = misc.get_rank()
     if args.distributed:  # args.distributed:
         num_tasks = misc.get_world_size()
         sampler_train = torch.utils.data.DistributedSampler(
-            dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=True
+            dataset_train, num_replicas=num_tasks, rank=misc.get_rank(), shuffle=True
         )
         print(f"Sampler_train = {str(sampler_train)}")
     else:
@@ -482,7 +481,7 @@ def main(args):
             **{f"train_{k}": v for k, v in train_stats.items()},
             "epoch": epoch,
         }
-        
+
         if args.output_dir and (epoch % 5 == 0 or epoch + 1 == args.epochs):
             misc.save_model(
                 args=args,
