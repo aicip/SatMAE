@@ -1,8 +1,9 @@
 import random
+
 import torch
 import torch.nn as nn
-
 from torchvision import transforms as T
+
 from .models_mae import MaskedAutoencoderViT
 
 # xformers._is_functorch_available = True
@@ -53,9 +54,10 @@ class MaskedAutoencoderViTCross(MaskedAutoencoderViT):
         AUG1 = torch.nn.Sequential(T.Resize(size=(self.input_size, self.input_size)))
         AUG2 = torch.nn.Sequential(
             T.RandomResizedCrop(
-                size=(self.input_size, self.input_size), scale=(0.2, 0.8)
+                size=(self.input_size, self.input_size),
+                scale=(0.2, 0.8),
+                antialias=True,
             )
-            # T.Resize(size=img_size)
         )
 
         self.augment1 = default(augment_fn1, AUG1)
@@ -65,10 +67,22 @@ class MaskedAutoencoderViTCross(MaskedAutoencoderViT):
             self.decoder_embed_dim, self.num_patches, predictor_hidden_size
         )
 
-    def forward(self, imgs, mask_ratio=0.75):
+    def forward(
+        self, imgs, mask_ratio=0.75, mask_seed: int = None, consistent_mask=False
+    ):
         img1, img2 = self.augment1(imgs), self.augment2(imgs)
 
+        if mask_seed is None and consistent_mask:
+            mask_seed = torch.randint(0, 100000000, (1,)).item()
+
+        if mask_seed is not None:
+            torch.manual_seed(mask_seed)
+
         latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio)
+
+        if mask_seed is not None and consistent_mask:
+            torch.manual_seed(mask_seed)
+
         latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)
 
         pred1, dec_emd_1 = self.forward_decoder(latent1, ids_restore1)  # [N, L, p*p*3]

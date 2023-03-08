@@ -10,6 +10,7 @@ import numpy as np
 import PIL
 import torch
 from PIL import Image
+from torchvision import transforms as T
 
 import models_mae
 
@@ -112,7 +113,7 @@ def prepare_model(
     return model
 
 
-def prepare_image(image_uri, model, resample=None):
+def prepare_image(image_uri, model, random_crop=False, crop_seed=None, resample=None):
     """
     :param resample: An optional resampling filter.  This can be
            one `Resampling.NEAREST`, `Resampling.BOX`,
@@ -124,14 +125,17 @@ def prepare_image(image_uri, model, resample=None):
     img_size = model.input_size
     img_chans = model.input_channels
 
+    # random crop
+    if random_crop:
+        if crop_seed is not None:
+            torch.manual_seed(crop_seed)
+        img = T.RandomResizedCrop(img_size, scale=(0.2, 0.8))(img)
+
     img = img.resize((img_size, img_size), resample=resample)
     img = np.array(img) / 255.0
+    img = (img - image_mean) / image_std
 
     assert img.shape == (img_size, img_size, img_chans)
-
-    # normalize by dataset mean and std
-    img = img - image_mean
-    img = img / image_std
 
     return img
 
@@ -153,14 +157,8 @@ def add_noise(image, noise_type="gaussian", noise_param=0.1):
 
 
 def run_one_image(img, model, seed: Optional[int] = None):
-    if seed is not None:
-        torch.manual_seed(seed)
-
     patch_size = model.patch_size
     channels = model.input_channels
-
-    # print("Patch Size:", patch_size)
-    # print("Channels:", channels)
 
     x = torch.tensor(img)
 
@@ -169,10 +167,10 @@ def run_one_image(img, model, seed: Optional[int] = None):
     x = torch.einsum("nhwc->nchw", x)
 
     # run MAE
-    _, y, mask = model(x.float(), mask_ratio=0.75)
+    _, y, mask = model(x.float(), mask_ratio=0.75, mask_seed=seed)
+
     y = model.unpatchify(y, p=patch_size, c=channels)
     y = torch.einsum("nchw->nhwc", y).detach().cpu()
-
     # visualize the mask
     mask = mask.detach()
     mask = mask.unsqueeze(-1).repeat(
@@ -184,6 +182,10 @@ def run_one_image(img, model, seed: Optional[int] = None):
     mask = torch.einsum("nchw->nhwc", mask).detach().cpu()
 
     x = torch.einsum("nchw->nhwc", x)
+
+    # Un-normalize
+    x = (x * image_std) + image_mean
+    y = (y * image_std) + image_mean
 
     # masked image
     im_masked = x * (1 - mask)
@@ -198,9 +200,26 @@ def run_one_image(img, model, seed: Optional[int] = None):
 def show_image(image, ax=None, title=""):
     # image is [H, W, 3]
     assert image.shape[2] == 3
-    ax.imshow(torch.clip((image * image_std + image_mean) * 255, 0, 255).int())
+    # if needed conver to int 0-255
+    if image.dtype != np.uint8:
+        image = torch.clip((image) * 255, 0, 255).int()
+
+    ax.imshow(image)
     ax.set_title(title)
     ax.axis("off")
+    vmin = image.min().item()
+    vmax = image.max().item()
+    # show min and max values at the bottom
+    # ax.text(
+    #     0,
+    #     0,
+    #     f"{vmin} - {vmax}",
+    #     color="white",
+    #     verticalalignment="bottom",
+    #     horizontalalignment="left",
+    #     transform=ax.transAxes,
+    # )
+
     return
 
 
@@ -209,6 +228,8 @@ def plot_comp(
     models,
     maskseed=None,
     use_noise=None,
+    use_random_crop=False,
+    show_difference=True,
     resample=None,
     title=None,
     figsize=12,
@@ -226,7 +247,9 @@ def plot_comp(
         models = {"model": models}
 
     fig, axs = plt.subplots(
-        len(models), 4, figsize=(figsize, len(models) * figsize / 4)
+        len(models),
+        4 + int(show_difference),
+        figsize=(figsize, len(models) * figsize / 4),
     )
 
     if title is not None:
@@ -234,10 +257,20 @@ def plot_comp(
 
     # make the plt figure larger
     # plt.rcParams["figure.figsize"] = [figsize, figsize]
+    cropseed = None
+    if use_random_crop:
+        cropseed = np.random.randint(1000000)
+
     for model_i, (model_name, model) in enumerate(models.items()):
         # if img is string
         if isinstance(image, str):
-            img = prepare_image(image, model, resample=resample)
+            img = prepare_image(
+                image,
+                model,
+                resample=resample,
+                random_crop=use_random_crop,
+                crop_seed=cropseed,
+            )
         else:
             img = image
 
@@ -257,6 +290,15 @@ def plot_comp(
         for i in range(4):
             ax = axs[model_i, i] if len(models) > 1 else axs[i]
             show_image(imgs[i], ax, titles[i])
+
+        if show_difference:
+            # show the difference between the original and the reconstruction
+            diff = imgs[0] - imgs[3]
+            # # scale the difference to be between 0 and 1
+            ax = axs[model_i, 4] if len(models) > 1 else axs[4]
+            # Sum of squared differences
+            ssd = torch.sum(diff**2)
+            show_image(diff, ax, f"SSD: {ssd:.2f}")
 
     plt.tight_layout()
     if save:
@@ -286,6 +328,8 @@ def plot_comp_many(
     walkseed: Optional[int] = None,  # Only used if random_walk is True
     maskseed: Optional[int] = None,
     use_noise: Optional[tuple] = None,  # ex: ("gaussian", 0.25)
+    use_random_crop: bool = False,
+    num_random_crop: int = 1,
     resample=PIL.Image.Resampling.BICUBIC,
     base_title: Optional[str] = None,
     save=False,
@@ -332,3 +376,14 @@ def plot_comp_many(
                     resample=resample,
                     save=save,
                 )
+            if use_random_crop:
+                for _ in range(num_random_crop):
+                    plot_comp(
+                        img_path,
+                        models,
+                        maskseed=mseed,
+                        use_random_crop=True,
+                        title=f"{title} - Random Resize Crop",
+                        resample=resample,
+                        save=save,
+                    )

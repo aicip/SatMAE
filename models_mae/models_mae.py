@@ -1,7 +1,7 @@
 from functools import partial
+
 import torch
 import torch.nn as nn
-from xformers.factory import xFormer, xFormerConfig
 from timm.models.vision_transformer import Block, PatchEmbed
 from xformers.factory import xFormer, xFormerConfig
 
@@ -363,18 +363,18 @@ class MaskedAutoencoderViT(nn.Module):
 
         # apply Transformer blocks
         if self.use_xformers:
-            x1 = self.decoder(x)
+            x_embed = self.decoder(x)
         else:
             for blk in self.decoder:
-                x1 = blk(x)
+                x_embed = blk(x)
 
         # predictor projection
-        x = self.decoder_pred(x1)
+        x_pred = self.decoder_pred(x_embed)
 
         # remove cls token
-        x = x[:, 1:, :]
+        x_pred = x_pred[:, 1:, :]
 
-        return x, x1
+        return x_pred, x_embed
 
     def forward_loss_mse(self, imgs, pred, mask):
         """
@@ -382,10 +382,17 @@ class MaskedAutoencoderViT(nn.Module):
         pred: [N, L, p*p*3]
         mask: [N, L], 0 is keep, 1 is remove,
         """
+        # print("pred", pred.shape)
+        # torch.Size([512, 64, 192])
+
+        # print("target", target.shape)
+        # torch.Size([512, 64, 192])
+
         # target = imgs[:, :3, :, :]
         # pred = self.unpatchify(pred, self.patch_embed.patch_size[0], self.in_c)
         # pred = self.patchify(pred[:, :3, :, :], self.patch_embed.patch_size[0], 3)
         # target = self.patchify(target, self.patch_embed.patch_size[0], 3)
+
         target = self.patchify(
             imgs, self.patch_embed.patch_size[0], self.input_channels
         )
@@ -393,12 +400,6 @@ class MaskedAutoencoderViT(nn.Module):
             mean = target.mean(dim=-1, keepdim=True)
             var = target.var(dim=-1, keepdim=True)
             target = (target - mean) / (var + 1.0e-6) ** 0.5
-
-        # print("pred", pred.shape)
-        # torch.Size([512, 64, 192])
-
-        # print("target", target.shape)
-        # torch.Size([512, 64, 192])
 
         loss = (pred - target) ** 2
         # print("loss", loss.shape)
@@ -418,19 +419,20 @@ class MaskedAutoencoderViT(nn.Module):
         pred: [N, L, p*p*3]
         mask: [N, L], 0 is keep, 1 is remove,
         """
-        target = self.patchify(
-            imgs, self.patch_embed.patch_size[0], self.input_channels
-        )
-        if self.norm_pix_loss:
-            mean = target.mean(dim=-1, keepdim=True)
-            var = target.var(dim=-1, keepdim=True)
-            target = (target - mean) / (var + 1.0e-6) ** 0.5
-
         # print("pred", pred.shape)
         # torch.Size([512, 64, 192])
 
         # print("target", target.shape)
         # torch.Size([512, 64, 192])
+
+        target = self.patchify(
+            imgs, self.patch_embed.patch_size[0], self.input_channels
+        )
+
+        if self.norm_pix_loss:
+            mean = target.mean(dim=-1, keepdim=True)
+            var = target.var(dim=-1, keepdim=True)
+            target = (target - mean) / (var + 1.0e-6) ** 0.5
 
         # final shape should be [512, 64] before (loss * mask).sum() / mask.sum()
         loss = torch.abs(pred - target)
@@ -447,15 +449,18 @@ class MaskedAutoencoderViT(nn.Module):
 
         return loss
 
-    def forward(self, imgs, mask_ratio=0.75):
+    def forward(self, imgs, mask_ratio=0.75, mask_seed=None):
+        if mask_seed is not None:
+            torch.manual_seed(mask_seed)
+
         latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
         pred, _ = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
-        # TODO: Add flag for loss function
+
         if self.loss == "mse":
             loss = self.forward_loss_mse(imgs, pred, mask)
         elif self.loss == "l1":
             loss = self.forward_loss_l1(imgs, pred, mask)
         else:
             raise ValueError(f"Loss type {self.loss} not supported.")
-        # loss = self.forward_loss_l1(imgs, pred, mask)
+
         return loss, pred, mask
