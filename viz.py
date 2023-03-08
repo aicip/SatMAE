@@ -207,9 +207,10 @@ def show_image(image, ax=None, title=""):
     ax.imshow(image)
     ax.set_title(title)
     ax.axis("off")
-    vmin = image.min().item()
-    vmax = image.max().item()
+
     # show min and max values at the bottom
+    # vmin = image.min().item()
+    # vmax = image.max().item()
     # ax.text(
     #     0,
     #     0,
