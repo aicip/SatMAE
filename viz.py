@@ -153,8 +153,8 @@ def add_noise(image, noise_type="gaussian", noise_param=0.1):
 
 
 def run_one_image(img, model, seed: Optional[int] = None):
-    if seed is not None:
-        torch.manual_seed(seed)
+    # if seed is not None:
+    #     torch.manual_seed(seed)
 
     patch_size = model.patch_size
     channels = model.input_channels
@@ -169,7 +169,7 @@ def run_one_image(img, model, seed: Optional[int] = None):
     x = torch.einsum("nhwc->nchw", x)
 
     # run MAE
-    _, y, mask = model(x.float(), mask_ratio=0.75)
+    _, y, mask = model(x.float(), mask_ratio=0.75, mask_seed=seed)
     y = model.unpatchify(y, p=patch_size, c=channels)
     y = torch.einsum("nchw->nhwc", y).detach().cpu()
 

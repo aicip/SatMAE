@@ -1663,18 +1663,18 @@ class MaskedAutoencoderViT(nn.Module):
 
         # apply Transformer blocks
         if self.use_xformers:
-            x1 = self.decoder(x)
+            x_embed = self.decoder(x)
         else:
             for blk in self.decoder:
-                x1 = blk(x)
+                x_embed = blk(x)
 
         # predictor projection
-        x = self.decoder_pred(x1)
+        x_pred = self.decoder_pred(x_embed)
 
         # remove cls token
-        x = x[:, 1:, :]
+        x_pred = x_pred[:, 1:, :]
 
-        return x, x1
+        return x_pred, x_embed
 
     def forward_loss_mse(self, imgs, pred, mask):
         """
@@ -1747,7 +1747,10 @@ class MaskedAutoencoderViT(nn.Module):
 
         return loss
 
-    def forward(self, imgs, mask_ratio=0.75):
+    def forward(self, imgs, mask_ratio=0.75, mask_seed=None):
+        if mask_seed is not None:
+            torch.manual_seed(mask_seed)
+            
         latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
         pred, _ = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
         # TODO: Add flag for loss function
@@ -1790,10 +1793,20 @@ class MaskedAutoencoderViTCross(MaskedAutoencoderViT):
             self.decoder_embed_dim, self.num_patches, predictor_hidden_size
         )
 
-    def forward(self, imgs, mask_ratio=0.75):
+    def forward(self, imgs, mask_ratio=0.75, mask_seed=None, consistent_mask=True):
         img1, img2 = self.augment1(imgs), self.augment2(imgs)
+        
+        if mask_seed is None and consistent_mask: 
+            mask_seed = torch.randint(0, 100000000, (1,)).item()
+        
+        if mask_seed is not None:
+            torch.manual_seed(mask_seed)
 
         latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio)
+        
+        if mask_seed is not None and consistent_mask:
+            torch.manual_seed(mask_seed)
+            
         latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)
 
         pred1, dec_emd_1 = self.forward_decoder(latent1, ids_restore1)  # [N, L, p*p*3]
