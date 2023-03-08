@@ -1,7 +1,7 @@
 from functools import partial
+
 import torch
 import torch.nn as nn
-from xformers.factory import xFormer, xFormerConfig
 from timm.models.vision_transformer import Block, PatchEmbed
 from xformers.factory import xFormer, xFormerConfig
 
@@ -387,12 +387,12 @@ class MaskedAutoencoderViT(nn.Module):
 
         # print("target", target.shape)
         # torch.Size([512, 64, 192])
-        
+
         # target = imgs[:, :3, :, :]
         # pred = self.unpatchify(pred, self.patch_embed.patch_size[0], self.in_c)
         # pred = self.patchify(pred[:, :3, :, :], self.patch_embed.patch_size[0], 3)
         # target = self.patchify(target, self.patch_embed.patch_size[0], 3)
-        
+
         target = self.patchify(
             imgs, self.patch_embed.patch_size[0], self.input_channels
         )
@@ -424,11 +424,11 @@ class MaskedAutoencoderViT(nn.Module):
 
         # print("target", target.shape)
         # torch.Size([512, 64, 192])
-        
+
         target = self.patchify(
             imgs, self.patch_embed.patch_size[0], self.input_channels
         )
-        
+
         if self.norm_pix_loss:
             mean = target.mean(dim=-1, keepdim=True)
             var = target.var(dim=-1, keepdim=True)
@@ -452,7 +452,7 @@ class MaskedAutoencoderViT(nn.Module):
     def forward(self, imgs, mask_ratio=0.75, mask_seed=None):
         if mask_seed is not None:
             torch.manual_seed(mask_seed)
-            
+
         latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
         pred, _ = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
 
