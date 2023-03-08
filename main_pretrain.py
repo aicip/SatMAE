@@ -153,14 +153,14 @@ def get_args_parser():
         type=float,
         default=None,
         metavar="LR",
-        help="Learning rate (absolute)",
+        help="Absolute LR. If None, it is set automatically based on absolute_lr = base_lr * total_batch_size / 256",
     )
     parser.add_argument(
         "--blr",
         type=float,
         default=1e-3,
         metavar="LR",
-        help="Base LR: absolute_lr = base_lr * total_batch_size / 256",
+        help="Base LR. absolute_lr = base_lr * total_batch_size / 256",
     )
     parser.add_argument(
         "--min_lr",
