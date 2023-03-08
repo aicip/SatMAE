@@ -284,7 +284,7 @@ def plot_comp(
         titles = [
             "Original",
             "Masked",
-            f"{model_name} Reconstruction",
+            f"{model_name}",
             "Reconstruction + Visible",
         ]
 
