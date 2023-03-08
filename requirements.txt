@@ -6,4 +6,4 @@ tensorboard==2.6.0
 protobuf<=3.20.0
 xformers==0.0.16
 jupyter
-matplotlib==3.6.2
+matplotlib

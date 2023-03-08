@@ -1,12 +1,12 @@
 #!/bin/bash
 # !/bin/zsh
 
-DEVICE="cuda:0"
+DEVICE="cuda:1"
 
 EPOCHS=200
 
 INPUT_SIZE=64
-BATCH_SIZE=128
+BATCH_SIZE=96
 
 PATCH_SIZES="4|4"
 MASK_RATIO='0.75'
@@ -23,8 +23,8 @@ ATTENTION="shunted"
 # MODEL_NAME="shunted_2s_mae_vit_mini"
 # MODEL_NAME="shunted_2s_mae_vit_small"
 # MODEL_NAME="shunted_2s_mae_vit_base"
-# MODEL_NAME="shunted_2s_mae_vit_tiny_cross"
-MODEL_NAME="shunted_2s_mae_vit_small_cross"
+MODEL_NAME="shunted_2s_mae_vit_tiny_cross"
+# MODEL_NAME="shunted_2s_mae_vit_small_cross"
 
 # Data path for com1822:
 IN_PATH_BASE="/data2/HDD_16TB"
@@ -40,9 +40,10 @@ OUT_DIR_BASE="/data2/HDD_16TB/ICCV/Model_Saving"
 
 OUT_DIR="${OUT_DIR_BASE}/out_${MODEL_NAME}_i${INPUT_SIZE}_p${PATCH_SIZES}_e${EPOCHS}_${ATTENTION}_ratio${MASK_RATIO}_lr${LR}_loss${LOSS}"
 
-# RESUME="${OUT_DIR_BASE}/out__i64_p4|4_e200_shunted_ratio0.75_lr0.001_lossl1"
-# RESUME="${RESUME}/checkpoint-55.pth"
-# START_EPOCH=55
+RESUME="${OUT_DIR_BASE}/out_cross_shunted_2s_mae_vit_tiny_i64_p4|4_e200_shunted_ratio0.75_lr0.001_lossl1"
+START_EPOCH=35
+RESUME="${RESUME}/checkpoint-${START_EPOCH}.pth"
+OUT_DIR="${OUT_DIR}_resume"
 
 WANDB="satmae"
 
@@ -60,7 +61,7 @@ python3 main_pretrain.py \
 --lr "${LR}" \
 --loss "${LOSS}" \
 --mask_ratio "${MASK_RATIO}" \
---wandb "${WANDB}"
-# --resume "${RESUME}" \
-# --start_epoch "${START_EPOCH}" \
+--wandb "${WANDB}" \
+--resume "${RESUME}" \
+--start_epoch "${START_EPOCH}" \
  
