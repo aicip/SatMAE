@@ -298,7 +298,7 @@ def plot_comp(
             ax = axs[model_i, 4] if len(models) > 1 else axs[4]
             # Sum of squared differences
             ssd = torch.sum(diff**2)
-            show_image(diff, ax, f"SSD: {ssd:.4f}")
+            show_image(diff, ax, f"SSD: {ssd:.2f}")
 
     plt.tight_layout()
     if save:
