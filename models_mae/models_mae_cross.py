@@ -65,10 +65,20 @@ class MaskedAutoencoderViTCross(MaskedAutoencoderViT):
             self.decoder_embed_dim, self.num_patches, predictor_hidden_size
         )
 
-    def forward(self, imgs, mask_ratio=0.75):
+    def forward(self, imgs, mask_ratio=0.75, mask_seed: int=None, consistent_mask=False):
         img1, img2 = self.augment1(imgs), self.augment2(imgs)
+        
+        if mask_seed is None and consistent_mask: 
+            mask_seed = torch.randint(0, 100000000, (1,)).item()
+        
+        if mask_seed is not None:
+            torch.manual_seed(mask_seed)
 
         latent1, mask1, ids_restore1 = self.forward_encoder(img1, mask_ratio)
+        
+        if mask_seed is not None and consistent_mask:
+            torch.manual_seed(mask_seed)
+            
         latent2, mask2, ids_restore2 = self.forward_encoder(img2, mask_ratio)
 
         pred1, dec_emd_1 = self.forward_decoder(latent1, ids_restore1)  # [N, L, p*p*3]
