@@ -200,6 +200,21 @@ def shunted_2s_mae_vit_small(**kwargs):
     )
     return model
 
+def shunted_2s_mae_vit_small_cross(**kwargs):
+    model = MaskedAutoencoderShuntedViTCross(
+        # Encoder
+        dim_model=[256, 512],
+        encoder_num_layers=[4, 8],
+        encoder_num_heads=[4, 8],
+        mlp_ratios=[4, 4],
+        sr_ratios=[2, 1],
+        # Decoder
+        decoder_embed_dim=512,
+        decoder_num_layers=8,
+        decoder_num_heads=16,
+        **kwargs,
+    )
+    return model
 
 def shunted_2s_mae_vit_base(**kwargs):
     model = MaskedAutoencoderShuntedViT(
