@@ -25,6 +25,7 @@ import models_mae
 import models_mae_group_channels
 import models_mae_temporal
 import util.misc as misc
+import viz
 import wandb
 from engine_pretrain import train_one_epoch, train_one_epoch_temporal
 from util.datasets import build_fmow_dataset
@@ -217,6 +218,13 @@ def get_args_parser():
         "--output_dir",
         type=str,
         default=None,
+        help="Path used for saving trained model checkpoints and logs",
+    )
+
+    parser.add_argument(
+        "--val_img_path",
+        type=str,
+        default="./images/0011659_7_rgb.jpg",
         help="Path used for saving trained model checkpoints and logs",
     )
 
@@ -482,7 +490,7 @@ def main(args):
             **{f"train_{k}": v for k, v in train_stats.items()},
             "epoch": epoch,
         }
-
+        plot_img_data = None
         if args.output_dir and (epoch % 5 == 0 or epoch + 1 == args.epochs):
             misc.save_model(
                 args=args,
@@ -492,6 +500,18 @@ def main(args):
                 loss_scaler=loss_scaler,
                 epoch=epoch,
             )
+            
+            # Plot validation image which we can log to wandb
+            plot_img_data = viz.plot_comp(
+                args.val_img_path,
+                model,
+                maskseed=1234
+                title=f"{model_name} - epoch {epoch}",
+                use_noise=None,
+                save=False,
+                show=False
+            )
+            
 
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:
@@ -504,6 +524,10 @@ def main(args):
             # Log all stats from MetricLogger
             try:
                 if args.wandb_project is not None:
+                    # add the plot image to wandb
+                    if plot_img_data is not None:
+                        wandb.log({"val_plot": wandb.Image(plot_img_data)})
+                        
                     wandb.log(log_stats)
             except ValueError as e:
                 traceback.print_exc()
