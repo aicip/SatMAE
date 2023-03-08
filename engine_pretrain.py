@@ -2,11 +2,13 @@
 # References:
 # MAE: https://github.com/facebookresearch/mae
 # --------------------------------------------------------
+import contextlib
 import math
 import sys
 from typing import Iterable
 
 import torch
+
 import util.lr_sched as lr_sched
 import util.misc as misc
 import wandb
@@ -25,7 +27,7 @@ def train_one_epoch(
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter("lr", misc.SmoothedValue(window_size=1, fmt="{value:.6f}"))
-    header = "Epoch: [{}]".format(epoch)
+    header = f"Epoch: [{epoch}]"
     print_freq = 20
 
     accum_iter = args.accum_iter
@@ -33,7 +35,8 @@ def train_one_epoch(
     optimizer.zero_grad()
 
     if log_writer is not None:
-        print("log_dir: {}".format(log_writer.log_dir))
+        print(f"log_dir: {log_writer.log_dir}")
+
     for data_iter_step, (samples, _) in enumerate(
         metric_logger.log_every(data_loader, print_freq, header)
     ):
@@ -51,7 +54,7 @@ def train_one_epoch(
         loss_value = loss.item()
 
         if not math.isfinite(loss_value):
-            print("Loss is {}, stopping training".format(loss_value))
+            print(f"Loss is {loss_value}, stopping training")
             raise ValueError(f"Loss is {loss_value}, stopping training")
             # sys.exit(1)
 
@@ -69,31 +72,28 @@ def train_one_epoch(
 
         metric_logger.update(loss=loss_value)
 
-        lr = optimizer.param_groups[0]["lr"]
-        metric_logger.update(lr=lr)
+        train_lr_step = optimizer.param_groups[0]["lr"]
+        metric_logger.update(lr=train_lr_step)
 
-        loss_value_reduce = misc.all_reduce_mean(loss_value)
+        train_loss_step = misc.all_reduce_mean(loss_value)
         if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
             """We use epoch_1000x as the x-axis in tensorboard.
             This calibrates different curves when batch size changes.
             """
             epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
-            log_writer.add_scalar("train_loss", loss_value_reduce, epoch_1000x)
-            log_writer.add_scalar("lr", lr, epoch_1000x)
+            log_writer.add_scalar("train_loss", train_loss_step, epoch_1000x)
+            log_writer.add_scalar("lr", train_lr_step, epoch_1000x)
 
             # Wandb logging
-            if args.local_rank == 0 and args.wandb is not None:
-                try:
+            if args.local_rank == 0 and args.wandb_project is not None:
+                with contextlib.suppress(ValueError):
                     wandb.log(
                         {
-                            "train_loss_step": loss_value_reduce,
-                            "train_lr_step": lr,
+                            "train_loss_step": train_loss_step,
+                            "train_lr_step": train_lr_step,
                             "epoch_1000x": epoch_1000x,
                         }
                     )
-                except ValueError:
-                    pass
-
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
@@ -113,7 +113,7 @@ def train_one_epoch_temporal(
     model.train(True)
     metric_logger = misc.MetricLogger(delimiter="  ")
     metric_logger.add_meter("lr", misc.SmoothedValue(window_size=1, fmt="{value:.6f}"))
-    header = "Epoch: [{}]".format(epoch)
+    header = f"Epoch: [{epoch}]"
     print_freq = 20
 
     accum_iter = args.accum_iter
@@ -121,7 +121,7 @@ def train_one_epoch_temporal(
     optimizer.zero_grad()
 
     if log_writer is not None:
-        print("log_dir: {}".format(log_writer.log_dir))
+        print(f"log_dir: {log_writer.log_dir}")
 
     for data_iter_step, (samples, timestamps, _) in enumerate(
         metric_logger.log_every(data_loader, print_freq, header)
@@ -142,7 +142,7 @@ def train_one_epoch_temporal(
         loss_value = loss.item()
 
         if not math.isfinite(loss_value):
-            print("Loss is {}, stopping training".format(loss_value))
+            print(f"Loss is {loss_value}, stopping training")
             sys.exit(1)
 
         loss /= accum_iter
@@ -159,31 +159,28 @@ def train_one_epoch_temporal(
 
         metric_logger.update(loss=loss_value)
 
-        lr = optimizer.param_groups[0]["lr"]
-        metric_logger.update(lr=lr)
+        train_lr_step = optimizer.param_groups[0]["lr"]
+        metric_logger.update(lr=train_lr_step)
 
-        loss_value_reduce = misc.all_reduce_mean(loss_value)
+        train_loss_step = misc.all_reduce_mean(loss_value)
         if log_writer is not None and (data_iter_step + 1) % accum_iter == 0:
             """We use epoch_1000x as the x-axis in tensorboard.
             This calibrates different curves when batch size changes.
             """
             epoch_1000x = int((data_iter_step / len(data_loader) + epoch) * 1000)
-            log_writer.add_scalar("train_loss", loss_value_reduce, epoch_1000x)
-            log_writer.add_scalar("lr", lr, epoch_1000x)
+            log_writer.add_scalar("train_loss", train_loss_step, epoch_1000x)
+            log_writer.add_scalar("lr", train_lr_step, epoch_1000x)
 
             # Use wandb
-            if args.local_rank == 0 and args.wandb is not None:
-                try:
+            if args.local_rank == 0 and args.wandb_project is not None:
+                with contextlib.suppress(ValueError):
                     wandb.log(
                         {
-                            "train_loss_step": loss_value_reduce,
-                            "train_lr_step": lr,
+                            "train_loss_step": train_loss_step,
+                            "train_lr_step": train_lr_step,
                             "epoch_1000x": epoch_1000x,
                         }
                     )
-                except ValueError:
-                    pass
-
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
