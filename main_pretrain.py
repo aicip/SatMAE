@@ -106,7 +106,6 @@ def get_args_parser():
 
     parser.add_argument(
         "--use_xformers",
-        type=bool,
         action="store_true",
         help="Use xFormers instead of Timm for transformer blocks. Not compatible with --attn_name=shunted",
     )
@@ -137,7 +136,6 @@ def get_args_parser():
 
     parser.add_argument(
         "--norm_pix_loss",
-        type=bool,
         action="store_true",
         help="Use (per-patch) normalized pixels as targets for computing loss",
     )
@@ -270,13 +268,11 @@ def get_args_parser():
     )
     parser.add_argument(
         "--pin_mem",
-        type=bool,
         action="store_true",
         help="Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.",
     )
     parser.add_argument(
         "--no_pin_mem",
-        type=bool,
         action="store_false",
         dest="pin_mem",
         help="Don't pin CPU memory in DataLoader. Could severely slow down training on some systems and datasets.",
