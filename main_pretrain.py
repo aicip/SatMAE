@@ -500,18 +500,17 @@ def main(args):
                 loss_scaler=loss_scaler,
                 epoch=epoch,
             )
-            
+
             # Plot validation image which we can log to wandb
             plot_img_data = viz.plot_comp(
                 args.val_img_path,
                 model,
-                maskseed=1234
+                maskseed=1234,
                 title=f"{model_name} - epoch {epoch}",
                 use_noise=None,
                 save=False,
-                show=False
+                show=False,
             )
-            
 
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:
@@ -527,7 +526,7 @@ def main(args):
                     # add the plot image to wandb
                     if plot_img_data is not None:
                         wandb.log({"val_plot": wandb.Image(plot_img_data)})
-                        
+
                     wandb.log(log_stats)
             except ValueError as e:
                 traceback.print_exc()
