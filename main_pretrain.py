@@ -35,67 +35,89 @@ def get_args_parser():
     parser = argparse.ArgumentParser("MAE pre-training", add_help=False)
     parser.add_argument(
         "--batch_size",
-        default=64,
         type=int,
+        default=512,
         help="Batch size per GPU (effective batch size is batch_size * accum_iter * # gpus",
     )
     parser.add_argument("--epochs", default=200, type=int)
     parser.add_argument(
         "--accum_iter",
-        default=1,
         type=int,
+        default=1,
         help="Accumulate gradient iterations (for increasing the effective batch size under memory constraints)",
     )
 
     # Model parameters
     parser.add_argument(
         "--model_type",
+        type=str,
         default=None,
         choices=["group_c", "temporal", "vanilla"],
         help="Use channel model",
     )
     parser.add_argument(
         "--model",
-        default="mae_vit_base",
+        default="mae_vit_small",
         type=str,
         metavar="MODEL",
-        help="Name of model to train",
+        help="The name of the model architecture to train. These are defined in models_mae/__init__.py",
+    )
+    parser.add_argument(
+        "--input_size",
+        type=int,
+        default=64,
+        help="The size of the square-shaped input image",
+    )
+    parser.add_argument(
+        "--patch_size",
+        type=str,
+        default=8,
+        help="The size of the square-shaped patches across the image. Must be a divisor of input_size (input_size % patch_size == 0)",
     )
 
-    parser.add_argument("--input_size", default=128, type=int, help="images input size")
-    parser.add_argument("--patch_size", default=16, type=str, help="images input size")
-    parser.add_argument(
-        "--attn_name",
-        default="scaled_dot_product",
-        # Options: "shunted", "orthoformer", "random", "nystrom", "global", "local", "linformer", "pooling", "fourier_mix", "scaled_dot_product"
-        type=str,
-        help="attention name to use in transformer block",
-    )
     parser.add_argument(
         "--print_level",
-        default=1,
         type=int,
+        default=1,
         help="Print Level (0->3) - Only for MaskedAutoencoderShuntedViT",
     )
     parser.add_argument(
         "--mask_ratio",
-        default=0.75,
         type=float,
+        default=0.75,
         help="Masking ratio (percentage of removed patches).",
     )
+
     parser.add_argument(
-        "--ffn_name",
-        default="MLP",
-        # Options: "MLP", "FusedMLP"
+        "--attn_name",
         type=str,
-        help="ffn name to use in transformer block",
+        default="scaled_dot_product",
+        help="Attention name to use in transformer block. The following require the --use_xformers flag: 'linformer', 'orthoformer', 'nystrom', 'fourier_mix', 'local'",
+        choices=[
+            "scaled_dot_product",
+            "shunted",
+            "linformer",
+            "orthoformer",
+            "nystrom",
+            "fourier_mix",
+            "local",
+        ],
     )
+
     parser.add_argument(
-        "--use-xformers",
+        "--use_xformers",
         action="store_true",
-        help="Use xformers instead of timm for transformer",
+        help="Use xFormers instead of Timm for transformer blocks. Not compatible with --attn_name=shunted",
     )
     parser.set_defaults(use_xformers=False)
+
+    parser.add_argument(
+        "--ffn_name",
+        type=str,
+        default="MLP",
+        choices=["MLP", "FusedMLP"],
+        help="Type of FFN layer to use. Only supported if --use_xformers is also set.",
+    )
 
     parser.add_argument(
         "--spatial_mask",
@@ -106,9 +128,10 @@ def get_args_parser():
     # arg for loss, default is mae
     parser.add_argument(
         "--loss",
-        default="mse",
         type=str,
-        help="Loss function to use (mse or mae)",
+        default="mse",
+        help="Loss function to use",
+        choices=["mse", "l1"],
     )
 
     parser.add_argument(
@@ -128,25 +151,29 @@ def get_args_parser():
         type=float,
         default=None,
         metavar="LR",
-        help="learning rate (absolute lr)",
+        help="Absolute LR. If None, it is set automatically based on absolute_lr = base_lr * total_batch_size / 256",
     )
     parser.add_argument(
         "--blr",
         type=float,
         default=1e-3,
         metavar="LR",
-        help="base learning rate: absolute_lr = base_lr * total_batch_size / 256",
+        help="Base LR. absolute_lr = base_lr * total_batch_size / 256",
     )
     parser.add_argument(
         "--min_lr",
         type=float,
         default=0.0,
         metavar="LR",
-        help="lower lr bound for cyclic schedulers that hit 0",
+        help="Lower LR bound for cyclic schedulers that hit 0",
     )
 
     parser.add_argument(
-        "--warmup_epochs", type=int, default=40, metavar="N", help="epochs to warmup LR"
+        "--warmup_epochs",
+        type=int,
+        default=40,
+        metavar="N",
+        help="Defines the epoch where the Warmup Scheduler reaches its maximum value",
     )
 
     # Dataset parameters
@@ -158,6 +185,7 @@ def get_args_parser():
     )
     parser.add_argument(
         "--dataset_type",
+        type=str,
         default="rgb",
         choices=["rgb", "temporal", "sentinel", "euro_sat", "naip"],
         help="Whether to use fmow rgb, sentinel, or other dataset.",
@@ -187,23 +215,38 @@ def get_args_parser():
 
     parser.add_argument(
         "--output_dir",
+        type=str,
         default="./outputs",
-        help="path where to save, empty for no saving",
+        help="Path used for saving trained model checkpoints and logs",
     )
     parser.add_argument(
-        "--log_dir", default="./logs", help="path where to tensorboard log"
+        "--log_dir",
+        type=str,
+        default="./logs",
+        help="Path used for saving Tensorboard logs",
     )
     parser.add_argument(
-        "--device", default="cuda", help="device to use for training / testing"
+        "--device",
+        type=str,
+        default="cuda",
+        help="Device to use for training and testing",
     )
     parser.add_argument("--seed", default=0, type=int)
-    parser.add_argument("--resume", default="", help="resume from checkpoint")
+
     parser.add_argument(
-        "--wandb",
+        "--resume",
         type=str,
         default=None,
-        help="Wandb project name, eg: sentinel_pretrain",
+        help="The path to the checkpoint to resume training from.",
     )
+    parser.add_argument(
+        "--start_epoch",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Defines the epoch number to start training from. Useful when resuming training.",
+    )
+
     parser.add_argument(
         "--wandb_entity",
         type=str,
@@ -211,27 +254,41 @@ def get_args_parser():
         help="Wandb entity name, eg: utk-iccv23",
     )
     parser.add_argument(
-        "--start_epoch", default=0, type=int, metavar="N", help="start epoch"
+        "--wandb_project",
+        type=str,
+        default=None,
+        help="Wandb project name, eg: satmae",
     )
-    parser.add_argument("--num_workers", default=10, type=int)
+
+    parser.add_argument(
+        "--num_workers",
+        type=int,
+        default=10,
+        help="The number of CPU workers to use for the data loader. Generally, this should be set to the number of CPU threads on your machine.",
+    )
     parser.add_argument(
         "--pin_mem",
         action="store_true",
         help="Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.",
     )
-    parser.add_argument("--no_pin_mem", action="store_false", dest="pin_mem")
+    parser.add_argument(
+        "--no_pin_mem",
+        action="store_false",
+        dest="pin_mem",
+        help="Don't pin CPU memory in DataLoader. Could severely slow down training on some systems and datasets.",
+    )
     parser.set_defaults(pin_mem=True)
 
     # distributed training parameters
     parser.add_argument(
-        "--world_size", default=1, type=int, help="number of distributed processes"
+        "--world_size", default=1, type=int, help="Number of distributed processes"
     )
     parser.add_argument(
         "--local_rank", default=os.getenv("LOCAL_RANK", 0), type=int
     )  # prev default was -1
     parser.add_argument("--dist_on_itp", action="store_true")
     parser.add_argument(
-        "--dist_url", default="env://", help="url used to set up distributed training"
+        "--dist_url", default="env://", help="URL used to set up distributed training"
     )
 
     return parser
@@ -353,10 +410,10 @@ def main(args):
     #######################################################################################
     print("=" * 80)
     # Set up WandB
-    if global_rank == 0 and args.wandb is not None:
+    if global_rank == 0 and args.wandb_project is not None:
         wandb.init(
-            project=args.wandb,
             entity=args.wandb_entity,
+            project=args.wandb_project,
             group=args.model,
             job_type="pretrain",
         )
@@ -425,7 +482,7 @@ def main(args):
                 f.write(json.dumps(log_stats) + "\n")
 
             try:
-                if args.wandb is not None:
+                if args.wandb_project is not None:
                     wandb.log(log_stats)
             except ValueError as e:
                 traceback.print_exc()
