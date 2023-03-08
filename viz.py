@@ -104,8 +104,14 @@ def prepare_model(
 
     # build model
     args = vars(checkpoint["args"])
+    if 'print_level' in args:
+        args['print_level'] = 3
     print("args:", args)
-    model = getattr(models_mae, arch)(**args)
+    try:
+        model = getattr(models_mae, arch)(**args)
+    except AssertionError as e:
+        print("Error: ", e)
+        return None
     # load model
     msg = model.load_state_dict(checkpoint["model"], strict=False)
     print(msg)
@@ -157,7 +163,10 @@ def add_noise(image, noise_type="gaussian", noise_param=0.1):
 
 
 def run_one_image(img, model, seed: Optional[int] = None):
-    patch_size = model.patch_size
+    if 'patch_size' not in model.__dict__:  # for shunted models
+        patch_size = model.patch_sizes[-1]
+    else:
+        patch_size = model.patch_size
     channels = model.input_channels
 
     x = torch.tensor(img)
@@ -167,14 +176,23 @@ def run_one_image(img, model, seed: Optional[int] = None):
     x = torch.einsum("nhwc->nchw", x)
 
     # run MAE
-    _, y, mask = model(x.float(), mask_ratio=0.75, mask_seed=seed)
+    if 'mask_ratio' in model.__dict__:
+        mask_ratio = model.mask_ratio
+    else:
+        mask_ratio = 0.75
+    _, y, mask = model(x.float(), mask_ratio=mask_ratio, mask_seed=seed)
 
     y = model.unpatchify(y, p=patch_size, c=channels)
     y = torch.einsum("nchw->nhwc", y).detach().cpu()
     # visualize the mask
     mask = mask.detach()
+    if 'num_stages' in model.__dict__:
+        stage = model.num_stages - 1
+        patch_embed = getattr(model, f"patch_embed{stage + 1}")
+    else:
+        patch_embed = model.patch_embed
     mask = mask.unsqueeze(-1).repeat(
-        1, 1, model.patch_embed.patch_size[0] ** 2 * 3
+        1, 1, patch_embed.patch_size[0] ** 2 * 3
     )  # (N, H*W, p*p*3)
     mask = model.unpatchify(
         mask, p=patch_size, c=channels

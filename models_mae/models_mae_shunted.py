@@ -47,6 +47,10 @@ class MaskedAutoencoderShuntedViT(nn.Module):
     ):
         super().__init__()
         self.print_level = print_level
+        if isinstance(patch_size, str):
+            sep = "|"
+            to_list = lambda x: [int(y) for y in x.split(sep)]
+            patch_size = to_list(patch_size)
         if self.print_level > 0:
             print("--" * 8, "Config", "--" * 8)
             print(f"img_size: {input_size}")
@@ -77,7 +81,6 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         self.input_channels = input_channels
         self.depths = encoder_num_layers
         self.num_stages = len(encoder_num_layers)
-        self.mask_ratio = mask_ratio
         self.use_shunted_head = use_shunted_head
         self.decoder_embed_dim = decoder_embed_dim
         self.loss = loss.lower()
@@ -625,7 +628,10 @@ class MaskedAutoencoderShuntedViT(nn.Module):
 
         return loss
 
-    def forward(self, imgs, mask_ratio=0.75):
+    def forward(self, imgs, mask_seed=None, **kwargs):
+        if mask_seed is not None:
+            torch.manual_seed(mask_seed)
+            
         latent, mask, ids_restore = self.forward_encoder(imgs)
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
         if self.loss == "mse":
