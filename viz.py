@@ -200,24 +200,25 @@ def run_one_image(img, model, seed: Optional[int] = None):
 def show_image(image, ax=None, title=""):
     # image is [H, W, 3]
     assert image.shape[2] == 3
-    # scale by mean and std
-    # image = (image * image_std) + image_mean
-    image = torch.clip((image) * 255, 0, 255).int()
+    # if needed conver to int 0-255
+    if image.dtype != np.uint8:
+        image = torch.clip((image) * 255, 0, 255).int()
+
     ax.imshow(image)
     ax.set_title(title)
     ax.axis("off")
     vmin = image.min().item()
     vmax = image.max().item()
     # show min and max values at the bottom
-    ax.text(
-        0,
-        0,
-        f"{vmin} - {vmax}",
-        color="white",
-        verticalalignment="bottom",
-        horizontalalignment="left",
-        transform=ax.transAxes,
-    )
+    # ax.text(
+    #     0,
+    #     0,
+    #     f"{vmin} - {vmax}",
+    #     color="white",
+    #     verticalalignment="bottom",
+    #     horizontalalignment="left",
+    #     transform=ax.transAxes,
+    # )
 
     return
 
