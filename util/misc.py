@@ -170,11 +170,16 @@ class MetricLogger(object):
                         )
                     )
             end = time.time()
+        # Seconds
         total_time = time.time() - start_time
+        total_time_per_it = total_time / len(iterable)
+
+        self.update(time_epoch=total_time, time_step=total_time_per_it)
+
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
         print(
             "{} Total time: {} ({:.4f} s / it)".format(
-                header, total_time_str, total_time / len(iterable)
+                header, total_time_str, total_time_per_it
             )
         )
 

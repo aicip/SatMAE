@@ -179,7 +179,7 @@ def get_args_parser():
     # Dataset parameters
     parser.add_argument(
         "--train_path",
-        default="/data2/HDD_16TB/fmow-rgb-preproc/train_128.csv",
+        default="../fmow-rgb-preproc/train_64.csv",
         type=str,
         help="Train .csv path",
     )
@@ -478,6 +478,11 @@ def main(args):
                 args=args,
             )
 
+        log_stats = {
+            **{f"train_{k}": v for k, v in train_stats.items()},
+            "epoch": epoch,
+        }
+        
         if args.output_dir and (epoch % 5 == 0 or epoch + 1 == args.epochs):
             misc.save_model(
                 args=args,
@@ -488,11 +493,6 @@ def main(args):
                 epoch=epoch,
             )
 
-        log_stats = {
-            **{f"train_{k}": v for k, v in train_stats.items()},
-            "epoch": epoch,
-        }
-
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:
                 log_writer.flush()
@@ -501,6 +501,7 @@ def main(args):
             ) as f:
                 f.write(json.dumps(log_stats) + "\n")
 
+            # Log all stats from MetricLogger
             try:
                 if args.wandb_project is not None:
                     wandb.log(log_stats)
