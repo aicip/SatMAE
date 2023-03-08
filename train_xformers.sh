@@ -48,7 +48,7 @@ OUT_DIR="${OUT_DIR_BASE}/out_${MODEL}_xformers_${ATTENTION}_${FFN_NAME}_i${INPUT
 # Note: If you want to use additional flags, pass them when running the script.
 # Example: ./trainX.sh --wandb satmae --device "cuda:0"
 
-python3 main_pretrain.py --use-xformers \
+python3 main_pretrain.py --use_xformers \
     --train_path "$IN_PATH" \
     --output_dir "$OUT_DIR" \
     --model="$MODEL" \
