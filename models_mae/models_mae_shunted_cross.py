@@ -4,46 +4,20 @@ import torch.nn as nn
 from torchvision import transforms as T
 
 from .models_mae_shunted import MaskedAutoencoderShuntedViT
-
-# adding two function, MLP is for prediction, RandomApply is for augment
-
-
-def MLP(emd_dim, channel=64, hidden_size=1024):
-    return nn.Sequential(
-        nn.Linear(emd_dim, hidden_size),
-        nn.BatchNorm1d(channel),
-        nn.ReLU(inplace=True),
-        nn.Linear(hidden_size, emd_dim)
-    )
-
-
-class RandomApply(nn.Module):
-    def __init__(self, fn, p):
-        super().__init__()
-        self.fn = fn
-        self.p = p
-
-    def forward(self, x):
-        if random.random() > self.p:
-            return x
-        return self.fn(x)
-
-
-def default(val, def_val):
-    return def_val if val is None else val
-
+from .models_mae_cross import MLP, RandomApply, default
 
 
 class MaskedAutoencoderShuntedViTCross(MaskedAutoencoderShuntedViT):
-    """Cross-Prediction Masked Autoencoder 
-       with Shunted VisionTransformer backbone"""
+    """Cross-Prediction Masked Autoencoder
+    with Shunted VisionTransformer backbone"""
 
-    def __init__(self,
-                 augment_fn1=None,
-                 augment_fn2=None,
-                 predictor_hidden_size=2048,
-                 **kwargs,
-                 ):
+    def __init__(
+        self,
+        augment_fn1=None,
+        augment_fn2=None,
+        predictor_hidden_size=2048,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
 
         # augmentation define
@@ -59,13 +33,13 @@ class MaskedAutoencoderShuntedViTCross(MaskedAutoencoderShuntedViT):
         self.augment1 = default(augment_fn1, AUG1)
         self.augment2 = default(augment_fn2, AUG2)
         # may need to be modified to keep size consistency
-        self.predictor = MLP(self.decoder_embed_dim, 
-                             self.patch_embed1.num_patches, 
-                             predictor_hidden_size)
+        self.predictor = MLP(
+            self.decoder_embed_dim, self.patch_embed1.num_patches, predictor_hidden_size
+        )
 
     def forward_decoder(self, x, ids_restore):
         if self.print_level > 1:
-            print("--"*8, " Decoder ", "--"*8)
+            print("--" * 8, " Decoder ", "--" * 8)
             print(f"In x.shape: {x.shape}")
             print(f"In ids_restore.shape: {ids_restore.shape}")
         # embed tokens
@@ -75,8 +49,7 @@ class MaskedAutoencoderShuntedViTCross(MaskedAutoencoderShuntedViT):
 
         # append mask tokens to sequence
         mask_tokens = self.mask_token.repeat(
-            x.shape[0],
-            ids_restore.shape[1] + 1 - x.shape[1], 1
+            x.shape[0], ids_restore.shape[1] + 1 - x.shape[1], 1
         )
         if self.print_level > 2:
             print(f"mask_tokens.shape: {mask_tokens.shape}")
@@ -95,8 +68,7 @@ class MaskedAutoencoderShuntedViTCross(MaskedAutoencoderShuntedViT):
 
         # add pos embed
         if self.print_level > 1:
-            print(
-                f"x + decoder_pos_embed: {x.shape} + {self.decoder_pos_embed.shape}")
+            print(f"x + decoder_pos_embed: {x.shape} + {self.decoder_pos_embed.shape}")
         x = x + self.decoder_pos_embed
         if self.print_level > 1:
             print(f"decoder_pos_embed+x.shape: {x.shape}")
@@ -108,8 +80,8 @@ class MaskedAutoencoderShuntedViTCross(MaskedAutoencoderShuntedViT):
             dec_emd = blk(x)
             if self.print_level > 1:
                 print(f"\tOutputs from block_{blk_ind}: (x.shape): {x.shape})")
-                
-        # x = self.decoder_norm(dec_emd) # TODO: Removed by @maofenggg ?      
+
+        # x = self.decoder_norm(dec_emd) # TODO: Removed by @maofenggg ?
         # if self.print_level > 1:
         #     print(f"norm.x.shape: {x.shape}")
 
@@ -125,19 +97,17 @@ class MaskedAutoencoderShuntedViTCross(MaskedAutoencoderShuntedViT):
 
         return x, dec_emd
 
-
     def forward(self, imgs, mask_ratio=0.75):
         img1, img2 = self.augment1(imgs), self.augment2(imgs)
-        
-        
+
         latent1, mask1, ids_restore1 = self.forward_encoder(img1)
         latent2, mask2, ids_restore2 = self.forward_encoder(img2)
-        
+
         pred1, dec_emd_1 = self.forward_decoder(latent1, ids_restore1)  # [N, L, p*p*3]
         pred2, dec_emd_2 = self.forward_decoder(latent2, ids_restore2)  # [N, L, p*p*3]
 
         cross_pred = self.predictor(dec_emd_2[:, 1:, :])
-        
+
         if self.loss == "mse":
             loss1 = self.forward_loss_mse(img1, pred1, mask1)
             loss2 = self.forward_loss_mse(img2, pred2, mask2)
@@ -146,13 +116,12 @@ class MaskedAutoencoderShuntedViTCross(MaskedAutoencoderShuntedViT):
             loss2 = self.forward_loss_l1(img2, pred2, mask2)
         else:
             raise ValueError(f"Loss type {self.loss} not supported.")
-        
+
         c_loss = nn.MSELoss()
         cross_pred = self.predictor(dec_emd_2[:, 1:, :])
         cross_loss = c_loss(dec_emd_1[:, 1:, :], cross_pred)
-        
+
         loss = loss1 + loss2 + cross_loss
         if self.print_level > 1:
             raise Exception("Stopping because you set the print_level > 1.")
         return loss, pred1, mask1
-
