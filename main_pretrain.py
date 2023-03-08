@@ -411,9 +411,10 @@ def main(args):
             if args.use_xformers
             else f"{args.attn_name}",
             f"i{args.input_size}-p{args.patch_size}-mr{args.mask_ratio}",
-            f"e{args.epochs}-we{args.warmup_epochs}-lr{args.lr}",
+            f"e{args.epochs}-we{args.warmup_epochs}",
             f"b{args.batch_size}-a{args.accum_iter}",
             f"{args.loss_type}{'-normpix' if args.norm_pix_loss else ''}",
+            f"lr{args.lr}",
         ]
     )
 
