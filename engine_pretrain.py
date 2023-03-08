@@ -7,6 +7,7 @@ import sys
 from typing import Iterable
 
 import torch
+
 import util.lr_sched as lr_sched
 import util.misc as misc
 import wandb
@@ -82,7 +83,7 @@ def train_one_epoch(
             log_writer.add_scalar("lr", lr, epoch_1000x)
 
             # Wandb logging
-            if args.local_rank == 0 and args.wandb is not None:
+            if args.local_rank == 0 and args.wandb_project is not None:
                 try:
                     wandb.log(
                         {
@@ -172,7 +173,7 @@ def train_one_epoch_temporal(
             log_writer.add_scalar("lr", lr, epoch_1000x)
 
             # Use wandb
-            if args.local_rank == 0 and args.wandb is not None:
+            if args.local_rank == 0 and args.wandb_project is not None:
                 try:
                     wandb.log(
                         {

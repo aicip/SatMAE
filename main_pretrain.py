@@ -250,16 +250,16 @@ def get_args_parser():
     )
 
     parser.add_argument(
-        "--wandb",
-        type=str,
-        default=None,
-        help="Wandb project name, eg: satmae",
-    )
-    parser.add_argument(
         "--wandb_entity",
         type=str,
         default="utk-iccv23",
         help="Wandb entity name, eg: utk-iccv23",
+    )
+    parser.add_argument(
+        "--wandb_project",
+        type=str,
+        default=None,
+        help="Wandb project name, eg: satmae",
     )
 
     parser.add_argument(
@@ -414,10 +414,10 @@ def main(args):
     #######################################################################################
     print("=" * 80)
     # Set up WandB
-    if global_rank == 0 and args.wandb is not None:
+    if global_rank == 0 and args.wandb_project is not None:
         wandb.init(
-            project=args.wandb,
             entity=args.wandb_entity,
+            project=args.wandb_project,
             group=args.model,
             job_type="pretrain",
         )
@@ -486,7 +486,7 @@ def main(args):
                 f.write(json.dumps(log_stats) + "\n")
 
             try:
-                if args.wandb is not None:
+                if args.wandb_project is not None:
                     wandb.log(log_stats)
             except ValueError as e:
                 traceback.print_exc()
