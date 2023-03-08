@@ -1793,7 +1793,7 @@ class MaskedAutoencoderViTCross(MaskedAutoencoderViT):
             self.decoder_embed_dim, self.num_patches, predictor_hidden_size
         )
 
-    def forward(self, imgs, mask_ratio=0.75, mask_seed=None, consistent_mask=True):
+    def forward(self, imgs, mask_ratio=0.75, mask_seed: int=None, consistent_mask=False):
         img1, img2 = self.augment1(imgs), self.augment2(imgs)
         
         if mask_seed is None and consistent_mask: 

@@ -10,6 +10,7 @@ import numpy as np
 import PIL
 import torch
 from PIL import Image
+from torchvision import transforms as T
 
 import models_mae
 
@@ -112,7 +113,7 @@ def prepare_model(
     return model
 
 
-def prepare_image(image_uri, model, resample=None):
+def prepare_image(image_uri, model, random_crop=False, crop_seed=None, resample=None):
     """
     :param resample: An optional resampling filter.  This can be
            one `Resampling.NEAREST`, `Resampling.BOX`,
@@ -123,6 +124,13 @@ def prepare_image(image_uri, model, resample=None):
 
     img_size = model.input_size
     img_chans = model.input_channels
+    
+    # random crop
+    if random_crop:
+        if crop_seed is not None:
+            torch.manual_seed(crop_seed)
+        img = T.RandomResizedCrop(img_size, scale=(0.2, 0.8))(img)
+        
 
     img = img.resize((img_size, img_size), resample=resample)
     img = np.array(img) / 255.0
@@ -209,6 +217,7 @@ def plot_comp(
     models,
     maskseed=None,
     use_noise=None,
+    use_random_crop=False,
     resample=None,
     title=None,
     figsize=12,
@@ -234,16 +243,20 @@ def plot_comp(
 
     # make the plt figure larger
     # plt.rcParams["figure.figsize"] = [figsize, figsize]
+    cropseed = None
+    if use_random_crop:
+        cropseed = np.random.randint(1000000)
+    
     for model_i, (model_name, model) in enumerate(models.items()):
         # if img is string
         if isinstance(image, str):
-            img = prepare_image(image, model, resample=resample)
+            img = prepare_image(image, model, resample=resample, random_crop=use_random_crop, crop_seed=cropseed)
         else:
             img = image
 
         if use_noise is not None:
             img = add_noise(img, noise_type=use_noise[0], noise_param=use_noise[1])
-
+            
         x, im_masked, y, im_paste = run_one_image(img, model, seed=maskseed)
 
         imgs = [x[0], im_masked[0], y[0], im_paste[0]]
@@ -286,6 +299,8 @@ def plot_comp_many(
     walkseed: Optional[int] = None,  # Only used if random_walk is True
     maskseed: Optional[int] = None,
     use_noise: Optional[tuple] = None,  # ex: ("gaussian", 0.25)
+    use_random_crop: bool = False,
+    num_random_crop: int = 1,
     resample=PIL.Image.Resampling.BICUBIC,
     base_title: Optional[str] = None,
     save=False,
@@ -332,3 +347,14 @@ def plot_comp_many(
                     resample=resample,
                     save=save,
                 )
+            if use_random_crop:
+                for _ in range(num_random_crop):
+                    plot_comp(
+                        img_path,
+                        models,
+                        maskseed=mseed,
+                        use_random_crop=True,
+                        title=f"{title} - Random Resize Crop",
+                        resample=resample,
+                        save=save,
+                    )
