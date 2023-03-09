@@ -23,6 +23,8 @@ if [ -z "$MODEL" ] || [ -z "$ATTENTION" ] || [ -z "$LOSS" ]; then
     usage
 fi
 
+shift 3
+
 IN_PATH_BASE="../fmow-rgb-preproc"
 IN_PATH="${IN_PATH_BASE}/train_${INPUT_SIZE}.csv"
 # IN_PATH="$IN_PATH_BASE/train_${INPUT_SIZE}_com2044.csv"

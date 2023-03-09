@@ -18,6 +18,7 @@ class MaskedAutoencoderViT(nn.Module):
         input_size=128,
         input_channels=3,
         patch_size=16,  # Must be multiple of input_size
+        mask_ratio=0.75,
         dim_model=1024,
         # Encoder parameters
         encoder_num_layers=24,
@@ -51,6 +52,7 @@ class MaskedAutoencoderViT(nn.Module):
         self.input_channels = input_channels
         self.patch_size = int(patch_size)
         self.decoder_embed_dim = decoder_embed_dim
+        self.mask_ratio = mask_ratio
         self.loss = loss.lower()
 
         self.use_xformers = use_xformers
