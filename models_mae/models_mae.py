@@ -376,7 +376,7 @@ class MaskedAutoencoderViT(nn.Module):
 
         return x_pred, x_embed
 
-    def forward_loss_mse(self, imgs, pred, mask):
+    def forward_loss_mse(self, imgs, pred, mask=None):
         """
         imgs: [N, 3, H, W]
         pred: [N, L, p*p*3]
@@ -385,17 +385,12 @@ class MaskedAutoencoderViT(nn.Module):
         # print("pred", pred.shape)
         # torch.Size([512, 64, 192])
 
-        # print("target", target.shape)
-        # torch.Size([512, 64, 192])
-
-        # target = imgs[:, :3, :, :]
-        # pred = self.unpatchify(pred, self.patch_embed.patch_size[0], self.in_c)
-        # pred = self.patchify(pred[:, :3, :, :], self.patch_embed.patch_size[0], 3)
-        # target = self.patchify(target, self.patch_embed.patch_size[0], 3)
-
         target = self.patchify(
             imgs, self.patch_embed.patch_size[0], self.input_channels
         )
+        # print("target", target.shape)
+        # torch.Size([512, 64, 192])
+
         if self.norm_pix_loss:
             mean = target.mean(dim=-1, keepdim=True)
             var = target.var(dim=-1, keepdim=True)
@@ -409,11 +404,10 @@ class MaskedAutoencoderViT(nn.Module):
         # print("loss", loss.shape)
         # torch.Size([512, 64])
 
-        loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
-
+        loss = (loss * mask).sum() / mask.sum() if mask is not None else loss.mean()
         return loss
 
-    def forward_loss_l1(self, imgs, pred, mask):
+    def forward_loss_l1(self, imgs, pred, mask=None):
         """
         imgs: [N, 3, H, W]
         pred: [N, L, p*p*3]
@@ -422,19 +416,17 @@ class MaskedAutoencoderViT(nn.Module):
         # print("pred", pred.shape)
         # torch.Size([512, 64, 192])
 
-        # print("target", target.shape)
-        # torch.Size([512, 64, 192])
-
         target = self.patchify(
             imgs, self.patch_embed.patch_size[0], self.input_channels
         )
+        # print("target", target.shape)
+        # torch.Size([512, 64, 192])
 
         if self.norm_pix_loss:
             mean = target.mean(dim=-1, keepdim=True)
             var = target.var(dim=-1, keepdim=True)
             target = (target - mean) / (var + 1.0e-6) ** 0.5
 
-        # final shape should be [512, 64] before (loss * mask).sum() / mask.sum()
         loss = torch.abs(pred - target)
         # print("loss", loss.shape)
         # torch.Size([512, 64, 192])
@@ -444,9 +436,7 @@ class MaskedAutoencoderViT(nn.Module):
         # print("loss", loss.shape)
         # torch.Size([512, 64])
 
-        # mean loss on removed patches
-        loss = (loss * mask).sum() / mask.sum()
-
+        loss = (loss * mask).sum() / mask.sum() if mask is not None else loss.mean()
         return loss
 
     def forward(self, imgs, mask_ratio=0.75, mask_seed=None):
@@ -456,10 +446,12 @@ class MaskedAutoencoderViT(nn.Module):
         latent, mask, ids_restore = self.forward_encoder(imgs, mask_ratio)
         pred, _ = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
 
-        if self.loss == "mse":
-            loss = self.forward_loss_mse(imgs, pred, mask)
-        elif self.loss == "l1":
-            loss = self.forward_loss_l1(imgs, pred, mask)
+        loss_full = self.loss.endswith("full")
+        loss_mask = None if loss_full else mask
+        if self.loss.startswith("mse"):
+            loss = self.forward_loss_mse(imgs, pred, mask=loss_mask)
+        elif self.loss.startswith("l1"):
+            loss = self.forward_loss_l1(imgs, pred, mask=loss_mask)
         else:
             raise ValueError(f"Loss type {self.loss} not supported.")
 
