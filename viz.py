@@ -71,8 +71,8 @@ def prepare_model(
 
     # build model
     args = vars(checkpoint["args"])
-    if 'print_level' in args:
-        args['print_level'] = 0
+    if "print_level" in args:
+        args["print_level"] = 0
     print("args:", args)
     try:
         model = getattr(models_mae, arch)(**args)
@@ -165,7 +165,7 @@ def add_noise(image, noise_type="gaussian", noise_param=0.1):
 
 
 def run_one_image(img, model, seed: Optional[int] = None, device=None):
-    if 'patch_size' not in model.__dict__:  # for shunted models
+    if "patch_size" not in model.__dict__:  # for shunted models
         patch_size = model.patch_sizes[-1]
     else:
         patch_size = model.patch_size
@@ -178,11 +178,13 @@ def run_one_image(img, model, seed: Optional[int] = None, device=None):
     x = torch.einsum("nhwc->nchw", x)
 
     # run MAE
-    if 'mask_ratio' in model.__dict__:
+    if "mask_ratio" in model.__dict__:
         mask_ratio = model.mask_ratio
     else:
         mask_ratio = 0.75
-        print(f"WARN: mask_ratio not found in model config. Defaulting to {mask_ratio}.")
+        print(
+            f"WARN: mask_ratio not found in model config. Defaulting to {mask_ratio}."
+        )
 
     xf = x.float()
     if device is not None:
@@ -194,7 +196,7 @@ def run_one_image(img, model, seed: Optional[int] = None, device=None):
 
     # visualize the mask
     mask = mask.detach()
-    if 'num_stages' in model.__dict__:
+    if "num_stages" in model.__dict__:
         stage = model.num_stages - 1
         patch_embed = getattr(model, f"patch_embed{stage + 1}")
     else:
