@@ -431,7 +431,7 @@ def main(args):
 
     log_writer = None
     if misc.is_main_process():
-        if args.wandb_project is not None:
+        if args.wandb_entity is not None and args.wandb_project is not None:
             wandb.init(
                 entity=args.wandb_entity,
                 project=args.wandb_project,
