@@ -21,10 +21,10 @@ ATTENTION="shunted"
 
 # MODEL_NAME="shunted_2s_mae_vit_tiny"
 # MODEL_NAME="shunted_2s_mae_vit_mini"
-# MODEL_NAME="shunted_2s_mae_vit_small"
+# MODEL_NAME="mae_vit_shunted_2st_small"
 # MODEL_NAME="shunted_2s_mae_vit_base"
 MODEL_NAME="shunted_2s_mae_vit_tiny_cross"
-# MODEL_NAME="shunted_2s_mae_vit_small_cross"
+# MODEL_NAME="mae_vit_shunted_2st_small_cross"
 
 # Data path for com1822:
 IN_PATH_BASE="/data2/HDD_16TB"
