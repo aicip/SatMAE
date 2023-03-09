@@ -420,7 +420,7 @@ def main(args):
             f"i{args.input_size}-p{args.patch_size}-mr{args.mask_ratio}",
             f"e{args.epochs}-we{args.warmup_epochs}",
             f"b{args.batch_size}-a{args.accum_iter}",
-            f"{args.loss_type}{'-normpix' if args.norm_pix_loss else ''}",
+            f"{args.loss}{'-normpix' if args.norm_pix_loss else ''}",
             f"lr{args.lr}",
         ]
     )
@@ -431,7 +431,7 @@ def main(args):
 
     log_writer = None
     if misc.is_main_process():
-        if args.wandb is not None:
+        if args.wandb_project is not None:
             wandb.init(
                 entity=args.wandb_entity,
                 project=args.wandb_project,
@@ -524,7 +524,7 @@ def main(args):
                 if args.wandb_project is not None:
                     # add the plot image to wandb
                     if plot_img_data is not None:
-                        log_stats.update({"val_plot": wandb.Image(plot_img_data)})
+                        log_stats["val_plot"] = wandb.Image(plot_img_data)
 
                     wandb.log(log_stats)
             except ValueError as e:
