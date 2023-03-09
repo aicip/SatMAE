@@ -503,6 +503,7 @@ def main(args):
 
         plot_img_data_arr = []
         plot_img_title_arr = []
+        plot_img_fname_arr = []
 
         if args.output_dir and (epoch % 5 == 0 or epoch + 1 == args.epochs):
             misc.save_model(
@@ -517,7 +518,10 @@ def main(args):
             # if args.val_img_path is a directory, then we will plot all images in that directory
             if os.path.isdir(args.val_img_path):
                 for val_img_path in glob.glob(os.path.join(args.val_img_path, "*.jpg")):
-                    plot_img_title_i = f"{model_name} - epoch {epoch} - {os.path.basename(val_img_path)}"
+                    plot_img_fname_i = os.path.basename(val_img_path)
+                    plot_img_title_i = (
+                        f"{model_name} - epoch {epoch} - {plot_img_fname_i}"
+                    )
                     plot_img_data_i = viz.plot_comp(
                         val_img_path,
                         model,
@@ -529,11 +533,12 @@ def main(args):
                         show=False,
                         device=device,
                     )
-                    plot_img_data_arr.append(plot_img_data_i)
+                    plot_img_fname_arr.append(plot_img_fname_i)
                     plot_img_title_arr.append(plot_img_title_i)
-
+                    plot_img_data_arr.append(plot_img_data_i)
             else:
-                plot_img_title = f"{model_name} - epoch {epoch} - {os.path.basename(args.val_img_path)}"
+                plot_img_fname = os.path.basename(args.val_img_path)
+                plot_img_title = f"{model_name} - epoch {epoch} - {plot_img_fname}"
                 plot_img_data = viz.plot_comp(
                     args.val_img_path,
                     model,
@@ -545,8 +550,9 @@ def main(args):
                     show=False,
                     device=device,
                 )
-                plot_img_data_arr.append(plot_img_data)
+                plot_img_fname_arr.append(plot_img_fname)
                 plot_img_title_arr.append(plot_img_title)
+                plot_img_data_arr.append(plot_img_data)
 
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:
@@ -559,25 +565,24 @@ def main(args):
             # Log all stats from MetricLogger
             try:
                 if args.wandb_project is not None:
-
-                    for plot_img_data, plot_img_title in zip(
-                        plot_img_data_arr, plot_img_title_arr
+                    for plot_img_fname, plot_img_title, plot_img_data in zip(
+                        plot_img_fname_arr, plot_img_title_arr, plot_img_data_arr
                     ):
                         # For comparison between all models
-                        log_stats["val_plot"] = wandb.Image(
+                        log_stats[f"val_plot_{plot_img_fname}"] = wandb.Image(
                             plot_img_data, caption=plot_img_title
                         )
                         # For comparison by model architecture
-                        log_stats[f"val_plot_{args.model}"] = wandb.Image(
-                            plot_img_data, caption=plot_img_title
-                        )
+                        log_stats[
+                            f"val_plot_{args.model}_{plot_img_fname}"
+                        ] = wandb.Image(plot_img_data, caption=plot_img_title)
                         # For comparison by model architecture and loss function
-                        log_stats[f"val_plot_{args.model}_{args.loss}"] = wandb.Image(
-                            plot_img_data, caption=plot_img_title
-                        )
+                        log_stats[
+                            f"val_plot_{args.model}_{args.loss}_{plot_img_fname}"
+                        ] = wandb.Image(plot_img_data, caption=plot_img_title)
                         # For comparison by model architecture and loss function and attention type
                         log_stats[
-                            f"val_plot_{args.model}_{args.loss}_{args.attn_name}"
+                            f"val_plot_{args.model}_{args.attn_name}_{plot_img_fname}"
                         ] = wandb.Image(plot_img_data, caption=plot_img_title)
 
                     wandb.log(log_stats)
