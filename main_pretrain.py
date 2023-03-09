@@ -249,13 +249,7 @@ def get_args_parser():
         default=None,
         help="The path to the checkpoint to resume training from.",
     )
-    # https://docs.wandb.ai/guides/runs/resuming
-    parser.add_argument(
-        "--wandb_resume",
-        type=str,
-        default=None,
-        help="The wandb projects name to resume training from.",
-    )
+    
     parser.add_argument(
         "--start_epoch",
         type=int,
@@ -270,6 +264,7 @@ def get_args_parser():
         default="utk-iccv23",
         help="Wandb entity name, eg: utk-iccv23",
     )
+    # https://docs.wandb.ai/guides/runs/resuming
     parser.add_argument(
         "--wandb_project",
         type=str,
