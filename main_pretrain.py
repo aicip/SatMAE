@@ -572,18 +572,6 @@ def main(args):
                         log_stats[f"val_plot_{plot_img_fname}"] = wandb.Image(
                             plot_img_data, caption=plot_img_title
                         )
-                        # For comparison by model architecture
-                        log_stats[
-                            f"val_plot_{args.model}_{plot_img_fname}"
-                        ] = wandb.Image(plot_img_data, caption=plot_img_title)
-                        # For comparison by model architecture and loss function
-                        log_stats[
-                            f"val_plot_{args.model}_{args.loss}_{plot_img_fname}"
-                        ] = wandb.Image(plot_img_data, caption=plot_img_title)
-                        # For comparison by model architecture and loss function and attention type
-                        log_stats[
-                            f"val_plot_{args.model}_{args.attn_name}_{plot_img_fname}"
-                        ] = wandb.Image(plot_img_data, caption=plot_img_title)
 
                     wandb.log(log_stats)
             except ValueError as e:
