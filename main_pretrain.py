@@ -133,7 +133,7 @@ def get_args_parser():
         type=str,
         default="mse",
         help="Loss function to use",
-        choices=["mse", "l1"],
+        choices=["mse", "l1", "mse_full", "l1_full"],
     )
 
     parser.add_argument(
