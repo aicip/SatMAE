@@ -179,6 +179,7 @@ def run_one_image(img, model, seed: Optional[int] = None):
     if 'mask_ratio' in model.__dict__:
         mask_ratio = model.mask_ratio
     else:
+        print(f"WARN: mask_ratio not found in model config. Defaulting to {mask_ratio}.")
         mask_ratio = 0.75
     _, y, mask = model(x.float(), mask_ratio=mask_ratio, mask_seed=seed)
 
