@@ -14,7 +14,6 @@ import traceback
 from pathlib import Path
 
 import numpy as np
-
 # assert timm.__version__ == "0.3.2"  # version check
 import timm.optim.optim_factory as optim_factory
 import torch
@@ -25,6 +24,7 @@ import models_mae
 import models_mae_group_channels
 import models_mae_temporal
 import util.misc as misc
+import viz
 import wandb
 from engine_pretrain import train_one_epoch, train_one_epoch_temporal
 from util.datasets import build_fmow_dataset
@@ -179,7 +179,7 @@ def get_args_parser():
     # Dataset parameters
     parser.add_argument(
         "--train_path",
-        default="/data2/HDD_16TB/fmow-rgb-preproc/train_128.csv",
+        default="./train_64.csv",
         type=str,
         help="Train .csv path",
     )
@@ -216,15 +216,23 @@ def get_args_parser():
     parser.add_argument(
         "--output_dir",
         type=str,
-        default="./outputs",
-        help="Path used for saving trained model checkpoints and logs",
+        default=None,
+        help="Path used for saving trained model checkpoints and logs. If not specified, the directory name is automatically generated based on model config.",
     )
     parser.add_argument(
-        "--log_dir",
+        "--output_dir_base",
         type=str,
-        default="./logs",
-        help="Path used for saving Tensorboard logs",
+        default="./out",
+        help="Base directory to use for model checkpoints directory",
     )
+
+    parser.add_argument(
+        "--val_img_path",
+        type=str,
+        default="./images/0011659_7_rgb.jpg",
+        help="Path used for saving trained model checkpoints and logs",
+    )
+
     parser.add_argument(
         "--device",
         type=str,
@@ -314,11 +322,10 @@ def main(args):
     dataset_train = build_fmow_dataset(is_train=True, args=args)
     print(dataset_train)
 
-    global_rank = misc.get_rank()
     if args.distributed:  # args.distributed:
         num_tasks = misc.get_world_size()
         sampler_train = torch.utils.data.DistributedSampler(
-            dataset_train, num_replicas=num_tasks, rank=global_rank, shuffle=True
+            dataset_train, num_replicas=num_tasks, rank=misc.get_rank(), shuffle=True
         )
         print(f"Sampler_train = {str(sampler_train)}")
     else:
@@ -369,15 +376,15 @@ def main(args):
 
     #######################################################################################
     print("=" * 80)
-    eff_batch_size = args.batch_size * args.accum_iter * misc.get_world_size()
+    batch_size_eff = args.batch_size * args.accum_iter * misc.get_world_size()
 
     print("accumulate grad iterations: %d" % args.accum_iter)
-    print("effective batch size: %d" % eff_batch_size)
+    print("effective batch size: %d" % batch_size_eff)
 
     if args.lr is None:  # only base_lr is specified
-        args.lr = args.blr * eff_batch_size / 256
+        args.lr = args.blr * batch_size_eff / 256
 
-    print("base lr: %.2e" % (args.lr * 256 / eff_batch_size))
+    print("base lr: %.2e" % (args.lr * 256 / batch_size_eff))
     print("actual lr: %.2e" % args.lr)
 
     if args.distributed:
@@ -401,32 +408,61 @@ def main(args):
         loss_scaler=loss_scaler,
     )
 
-    #######################################################################################
     print("=" * 80)
     model_params = filter(lambda p: p.requires_grad, model.parameters())
     model_num_params = sum(np.prod(p.size()) for p in model_params)
-    print(f"Number of trainable parameters: {model_num_params}")
+    print(f"Trainable parameters: {model_num_params}")
 
     #######################################################################################
+    # Set up output directory, checkpointing, and logging
     print("=" * 80)
-    # Set up WandB
-    if global_rank == 0 and args.wandb_project is not None:
-        wandb.init(
-            entity=args.wandb_entity,
-            project=args.wandb_project,
-            group=args.model,
-            job_type="pretrain",
-        )
-        wandb.config.update(args)
-        wandb.config.update({"num_params": model_num_params})
-        wandb.watch(model)
 
-    # Logging
-    if global_rank == 0 and args.log_dir is not None:
-        os.makedirs(args.log_dir, exist_ok=True)
-        log_writer = SummaryWriter(log_dir=args.log_dir)
-    else:
-        log_writer = None
+    model_name: str = "_".join(
+        [
+            args.model,
+            f"xformers-{args.attn_name}-{args.ffn_name}"
+            if args.use_xformers
+            else f"{args.attn_name}",
+            f"i{args.input_size}-p{args.patch_size}-mr{args.mask_ratio}",
+            f"e{args.epochs}-we{args.warmup_epochs}",
+            f"b{args.batch_size}-a{args.accum_iter}",
+            f"{args.loss}{'-normpix' if args.norm_pix_loss else ''}",
+            f"lr{args.lr}",
+        ]
+    )
+
+    if args.output_dir is None:
+        args.output_dir = f"out_{model_name}"
+    if args.output_dir_base is not None:
+        args.output_dir = os.path.join(args.output_dir_base, args.output_dir)
+        
+    Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+
+    log_writer = None
+    if misc.is_main_process():
+        if args.wandb_entity is not None and args.wandb_project is not None:
+            wandb.init(
+                entity=args.wandb_entity,
+                project=args.wandb_project,
+                name=model_name,
+                group=args.model,
+                job_type="pretrain",
+            )
+            wandb.config.update(args)
+            wandb.config.update(
+                {"num_params": model_num_params, "batch_size_eff": batch_size_eff}
+            )
+            wandb.watch(model)
+        else:
+            print("INFO: Not using wandb.")
+
+        # Logging
+        if args.output_dir is not None:
+            output_dir_tb = os.path.join(args.output_dir, "tensorboard")
+            log_writer = SummaryWriter(log_dir=output_dir_tb)
+            print(f"INFO: Tensorboard log path: {output_dir_tb}")
+        else:
+            print("INFO: Not logging to tensorboard.")
 
     #######################################################################################
     print(f"Start training for {args.epochs} epochs")
@@ -458,6 +494,11 @@ def main(args):
                 args=args,
             )
 
+        log_stats = {
+            **{f"train_{k}": v for k, v in train_stats.items()},
+            "epoch": epoch,
+        }
+        plot_img_data = None
         if args.output_dir and (epoch % 5 == 0 or epoch + 1 == args.epochs):
             misc.save_model(
                 args=args,
@@ -468,21 +509,33 @@ def main(args):
                 epoch=epoch,
             )
 
-        log_stats = {
-            **{f"train_{k}": v for k, v in train_stats.items()},
-            "epoch": epoch,
-        }
+            # Plot validation image which we can log to wandb
+            plot_img_data = viz.plot_comp(
+                args.val_img_path,
+                model,
+                maskseed=1234,
+                title=f"{model_name} - epoch {epoch}",
+                use_noise=None,
+                save=False,
+                show=False,
+                device=device,
+            )
 
         if args.output_dir and misc.is_main_process():
             if log_writer is not None:
                 log_writer.flush()
             with open(
-                os.path.join(args.output_dir, "log.txt"), mode="a", encoding="utf-8"
+                os.path.join(args.output_dir, "log.jsonl"), mode="a", encoding="utf-8"
             ) as f:
                 f.write(json.dumps(log_stats) + "\n")
 
+            # Log all stats from MetricLogger
             try:
                 if args.wandb_project is not None:
+                    # add the plot image to wandb
+                    if plot_img_data is not None:
+                        log_stats["val_plot"] = wandb.Image(plot_img_data)
+
                     wandb.log(log_stats)
             except ValueError as e:
                 traceback.print_exc()
@@ -496,6 +549,4 @@ def main(args):
 if __name__ == "__main__":
     args = get_args_parser()
     args = args.parse_args()
-    if args.output_dir:
-        Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     main(args)

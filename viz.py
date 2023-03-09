@@ -56,40 +56,7 @@ def prepare_model(
             chkpt_name = checkpoint_list[-1]
     except FileNotFoundError as e:
         print("Checkpoint folder not found: ", checkpoint_folder)
-        print(f"Checkpoint basedir: {chkpt_basedir}")
-        print("Did you mean any of these?")
-        # print only folders that contain .pth files
-        potential_folders = []
-        for folder in glob.glob(f"{chkpt_basedir}/**/*", recursive=True):
-            if len(glob.glob(f"{folder}/*.pth")) > 0:
-                # also print time last modified in time ago format
-                last_modified = os.path.getmtime(folder)
-                time_agos = [
-                    "sec",
-                    "min",
-                    "hrs",
-                    "days",
-                    "wks",
-                    "mts",
-                    "yrs",
-                ]
-                potential_folders.append((folder, last_modified))
-
-        potential_folders.sort(key=lambda x: x[1], reverse=True)
-
-        for folder, last_modified in potential_folders:
-            last_modified = time.time() - last_modified
-            time_ago = "some time"
-            for time_ago_ in time_agos:
-                time_ago = time_ago_
-                if last_modified < 60:
-                    break
-                last_modified = last_modified / 60
-
-            last_modified = f"{last_modified:.1f} {time_ago} ago"
-            folderpath_clean = folder.replace(chkpt_basedir, "").strip("/")
-            print(f" - {folderpath_clean:<100} ({last_modified})")
-
+        print_checkpoint_folders(chkpt_basedir)
         raise e
 
     if not chkpt_name.endswith(".pth"):
@@ -111,6 +78,42 @@ def prepare_model(
     print(msg)
     print("Model loaded.")
     return model
+
+
+# TODO Rename this here and in `prepare_model`
+def print_checkpoint_folders(chkpt_basedir):
+    print("Available checkpoint folders:")
+    # print only folders that contain .pth files
+    potential_folders = []
+    for folder in glob.glob(f"{chkpt_basedir}/**/*", recursive=True):
+        if len(glob.glob(f"{folder}/*.pth")) > 0:
+            # also print time last modified in time ago format
+            last_modified = os.path.getmtime(folder)
+            time_agos = [
+                "sec",
+                "min",
+                "hrs",
+                "days",
+                "wks",
+                "mts",
+                "yrs",
+            ]
+            potential_folders.append((folder, last_modified))
+
+    potential_folders.sort(key=lambda x: x[1], reverse=True)
+
+    for folder, last_modified in potential_folders:
+        last_modified = time.time() - last_modified
+        time_ago = "some time"
+        for time_ago_ in time_agos:
+            time_ago = time_ago_
+            if last_modified < 60:
+                break
+            last_modified = last_modified / 60
+
+        last_modified = f"{last_modified:.1f} {time_ago} ago"
+        folderpath_clean = folder.replace(chkpt_basedir, "").strip("/")
+        print(f" - {folderpath_clean:<100} ({last_modified})")
 
 
 def prepare_image(image_uri, model, random_crop=False, crop_seed=None, resample=None):
@@ -156,7 +159,7 @@ def add_noise(image, noise_type="gaussian", noise_param=0.1):
     return noisy_image
 
 
-def run_one_image(img, model, seed: Optional[int] = None):
+def run_one_image(img, model, seed: Optional[int] = None, device=None):
     patch_size = model.patch_size
     channels = model.input_channels
 
@@ -167,7 +170,10 @@ def run_one_image(img, model, seed: Optional[int] = None):
     x = torch.einsum("nhwc->nchw", x)
 
     # run MAE
-    _, y, mask = model(x.float(), mask_ratio=0.75, mask_seed=seed)
+    xf = x.float()
+    if device is not None:
+        xf = xf.to(device)
+    _, y, mask = model(xf, mask_ratio=0.75, mask_seed=seed)
 
     y = model.unpatchify(y, p=patch_size, c=channels)
     y = torch.einsum("nchw->nhwc", y).detach().cpu()
@@ -236,6 +242,8 @@ def plot_comp(
     figsize=12,
     savedir="plots",
     save=False,
+    show=True,
+    device=None,
 ):
     """
     :param resample: An optional resampling filter.  This can be
@@ -256,11 +264,7 @@ def plot_comp(
     if title is not None:
         fig.suptitle(title)
 
-    # make the plt figure larger
-    # plt.rcParams["figure.figsize"] = [figsize, figsize]
-    cropseed = None
-    if use_random_crop:
-        cropseed = np.random.randint(1000000)
+    cropseed = np.random.randint(1000000) if use_random_crop else None
 
     for model_i, (model_name, model) in enumerate(models.items()):
         # if img is string
@@ -278,7 +282,7 @@ def plot_comp(
         if use_noise is not None:
             img = add_noise(img, noise_type=use_noise[0], noise_param=use_noise[1])
 
-        x, im_masked, y, im_paste = run_one_image(img, model, seed=maskseed)
+        x, im_masked, y, im_paste = run_one_image(img, model, seed=maskseed, device=device)
 
         imgs = [x[0], im_masked[0], y[0], im_paste[0]]
         titles = [
@@ -317,7 +321,18 @@ def plot_comp(
             plt.savefig(os.path.join(savedir, f"plot_viz_{save_fname}.png"))
         else:
             print("INFO: Skipped saving because title was not provided")
-    plt.show()
+
+    if show:
+        plt.show()
+
+    # Return the plot as a pixel array
+    fig.canvas.draw()
+
+    # Now we can save it to a numpy array.
+    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    plt.close(fig)
+    return data
 
 
 def plot_comp_many(
