@@ -105,7 +105,7 @@ def prepare_model(
     # build model
     args = vars(checkpoint["args"])
     if 'print_level' in args:
-        args['print_level'] = 3
+        args['print_level'] = 0
     print("args:", args)
     try:
         model = getattr(models_mae, arch)(**args)
