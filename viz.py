@@ -259,7 +259,6 @@ def plot_comp(
     maskseed=None,
     use_noise=None,
     use_random_crop=False,
-    show_difference=True,
     resample=None,
     title=None,
     figsize=12,
@@ -280,8 +279,8 @@ def plot_comp(
 
     fig, axs = plt.subplots(
         len(models),
-        4 + int(show_difference),
-        figsize=(figsize, len(models) * figsize / 4),
+        5,
+        figsize=(figsize, len(models) * figsize / 5),
     )
 
     if title is not None:
@@ -309,26 +308,21 @@ def plot_comp(
             img, model, seed=maskseed, device=device
         )
 
-        imgs = [x[0], im_masked[0], y[0], im_paste[0]]
+        diff = torch.abs(x[0] - y[0])
+        diff_ssd = torch.sum((x[0] - y[0]) ** 2).item()
+
+        imgs = [x[0], im_masked[0], y[0], diff, im_paste[0]]
         titles = [
             "Original",
             "Masked",
             f"{model_name}",
+            f"SSD: {diff_ssd:.2f}",
             "Reconstruction + Visible",
         ]
 
-        for i in range(4):
+        for i in range(5):
             ax = axs[model_i, i] if len(models) > 1 else axs[i]
             show_image(imgs[i], ax, titles[i])
-
-        if show_difference:
-            # show the difference between the original and the reconstruction
-            diff = imgs[0] - imgs[3]
-            # # scale the difference to be between 0 and 1
-            ax = axs[model_i, 4] if len(models) > 1 else axs[4]
-            # Sum of squared differences
-            ssd = torch.sum(diff**2)
-            show_image(diff, ax, f"SSD: {ssd:.2f}")
 
     plt.tight_layout()
     if save:
