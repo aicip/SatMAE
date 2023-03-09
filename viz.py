@@ -159,7 +159,7 @@ def add_noise(image, noise_type="gaussian", noise_param=0.1):
     return noisy_image
 
 
-def run_one_image(img, model, seed: Optional[int] = None):
+def run_one_image(img, model, seed: Optional[int] = None, device=None):
     patch_size = model.patch_size
     channels = model.input_channels
 
@@ -170,7 +170,10 @@ def run_one_image(img, model, seed: Optional[int] = None):
     x = torch.einsum("nhwc->nchw", x)
 
     # run MAE
-    _, y, mask = model(x.float(), mask_ratio=0.75, mask_seed=seed)
+    xf = x.float()
+    if device is not None:
+        xf = xf.to(device)
+    _, y, mask = model(xf, mask_ratio=0.75, mask_seed=seed)
 
     y = model.unpatchify(y, p=patch_size, c=channels)
     y = torch.einsum("nchw->nhwc", y).detach().cpu()
@@ -240,6 +243,7 @@ def plot_comp(
     savedir="plots",
     save=False,
     show=True,
+    device=None,
 ):
     """
     :param resample: An optional resampling filter.  This can be
@@ -278,7 +282,7 @@ def plot_comp(
         if use_noise is not None:
             img = add_noise(img, noise_type=use_noise[0], noise_param=use_noise[1])
 
-        x, im_masked, y, im_paste = run_one_image(img, model, seed=maskseed)
+        x, im_masked, y, im_paste = run_one_image(img, model, seed=maskseed, device=device)
 
         imgs = [x[0], im_masked[0], y[0], im_paste[0]]
         titles = [

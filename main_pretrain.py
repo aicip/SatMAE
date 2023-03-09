@@ -179,7 +179,7 @@ def get_args_parser():
     # Dataset parameters
     parser.add_argument(
         "--train_path",
-        default="../fmow-rgb-preproc/train_64.csv",
+        default="./train_64.csv",
         type=str,
         help="Train .csv path",
     )
@@ -217,7 +217,13 @@ def get_args_parser():
         "--output_dir",
         type=str,
         default=None,
-        help="Path used for saving trained model checkpoints and logs",
+        help="Path used for saving trained model checkpoints and logs. If not specified, the directory name is automatically generated based on model config.",
+    )
+    parser.add_argument(
+        "--output_dir_base",
+        type=str,
+        default="./out",
+        help="Base directory to use for model checkpoints directory",
     )
 
     parser.add_argument(
@@ -427,6 +433,9 @@ def main(args):
 
     if args.output_dir is None:
         args.output_dir = f"out_{model_name}"
+    if args.output_dir_base is not None:
+        args.output_dir = os.path.join(args.output_dir_base, args.output_dir)
+        
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
     log_writer = None
@@ -509,6 +518,7 @@ def main(args):
                 use_noise=None,
                 save=False,
                 show=False,
+                device=device,
             )
 
         if args.output_dir and misc.is_main_process():
