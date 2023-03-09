@@ -14,6 +14,7 @@ import traceback
 from pathlib import Path
 
 import numpy as np
+
 # assert timm.__version__ == "0.3.2"  # version check
 import timm.optim.optim_factory as optim_factory
 import torch
@@ -435,7 +436,7 @@ def main(args):
         args.output_dir = f"out_{model_name}"
     if args.output_dir_base is not None:
         args.output_dir = os.path.join(args.output_dir_base, args.output_dir)
-        
+
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
 
     log_writer = None
@@ -498,7 +499,10 @@ def main(args):
             **{f"train_{k}": v for k, v in train_stats.items()},
             "epoch": epoch,
         }
+
         plot_img_data = None
+        plot_img_title = f"{model_name} - epoch {epoch}"
+
         if args.output_dir and (epoch % 5 == 0 or epoch + 1 == args.epochs):
             misc.save_model(
                 args=args,
@@ -509,14 +513,15 @@ def main(args):
                 epoch=epoch,
             )
 
-            # Plot validation image which we can log to wandb
+            # Plot validation image which we can log to WandB
             plot_img_data = viz.plot_comp(
                 args.val_img_path,
                 model,
                 maskseed=1234,
-                title=f"{model_name} - epoch {epoch}",
+                title=plot_img_title,
                 use_noise=None,
-                save=False,
+                save=True,
+                savedir=os.path.join(args.output_dir, "plots"),
                 show=False,
                 device=device,
             )
@@ -534,7 +539,9 @@ def main(args):
                 if args.wandb_project is not None:
                     # add the plot image to wandb
                     if plot_img_data is not None:
-                        log_stats["val_plot"] = wandb.Image(plot_img_data)
+                        log_stats["val_plot"] = wandb.Image(
+                            plot_img_data, caption=plot_img_title
+                        )
 
                     wandb.log(log_stats)
             except ValueError as e:

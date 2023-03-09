@@ -240,7 +240,7 @@ def plot_comp(
     resample=None,
     title=None,
     figsize=12,
-    savedir="plots",
+    savedir="./plots",
     save=False,
     show=True,
     device=None,
@@ -282,7 +282,9 @@ def plot_comp(
         if use_noise is not None:
             img = add_noise(img, noise_type=use_noise[0], noise_param=use_noise[1])
 
-        x, im_masked, y, im_paste = run_one_image(img, model, seed=maskseed, device=device)
+        x, im_masked, y, im_paste = run_one_image(
+            img, model, seed=maskseed, device=device
+        )
 
         imgs = [x[0], im_masked[0], y[0], im_paste[0]]
         titles = [
@@ -315,9 +317,7 @@ def plot_comp(
             # replace spaces with underscores
             save_fname = re.sub(r"\s+", "_", save_fname)
 
-            # if folder does not exist, create it
-            if not os.path.exists(savedir):
-                os.makedirs(savedir)
+            os.makedirs(savedir, exist_ok=True)
             plt.savefig(os.path.join(savedir, f"plot_viz_{save_fname}.png"))
         else:
             print("INFO: Skipped saving because title was not provided")
