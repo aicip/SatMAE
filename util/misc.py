@@ -147,6 +147,7 @@ class MetricLogger(object):
                 eta_seconds = iter_time.global_avg * (len(iterable) - i)
                 eta_str = str(datetime.timedelta(seconds=int(eta_seconds)))
                 if torch.cuda.is_available():
+                    memory_alloc = torch.cuda.max_memory_allocated() / self.MB
                     print(
                         log_msg.format(
                             i,
@@ -155,9 +156,10 @@ class MetricLogger(object):
                             meters=str(self),
                             iter_time=str(iter_time),
                             data_time=str(data_time),
-                            memory=torch.cuda.max_memory_allocated() / self.MB,
+                            memory=memory_alloc,
                         )
                     )
+                    self.update(memory_alloc=memory_alloc)
                 else:
                     print(
                         log_msg.format(
