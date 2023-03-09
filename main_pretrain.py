@@ -20,7 +20,7 @@ import numpy as np
 import timm.optim.optim_factory as optim_factory
 import torch
 import torch.backends.cudnn as cudnn
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter # type: ignore
 
 import models_mae
 import models_mae_group_channels
@@ -328,14 +328,14 @@ def main(args):
 
     if args.distributed:  # args.distributed:
         num_tasks = misc.get_world_size()
-        sampler_train = torch.utils.data.DistributedSampler(
+        sampler_train = torch.utils.data.DistributedSampler( # type: ignore
             dataset_train, num_replicas=num_tasks, rank=misc.get_rank(), shuffle=True
         )
         print(f"Sampler_train = {str(sampler_train)}")
     else:
-        sampler_train = torch.utils.data.RandomSampler(dataset_train)
+        sampler_train = torch.utils.data.RandomSampler(dataset_train) # type: ignore
 
-    data_loader_train = torch.utils.data.DataLoader(
+    data_loader_train = torch.utils.data.DataLoader( # type: ignore
         dataset_train,
         sampler=sampler_train,
         batch_size=args.batch_size,
