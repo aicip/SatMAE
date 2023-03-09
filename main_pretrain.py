@@ -231,7 +231,7 @@ def get_args_parser():
     parser.add_argument(
         "--val_img_path",
         type=str,
-        default="./images/0011659_7_rgb.jpg",
+        default="./images/",
         help="Path used for saving trained model checkpoints and logs",
     )
 
