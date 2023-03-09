@@ -48,7 +48,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         super().__init__()
         self.print_level = print_level
         if isinstance(patch_size, str):
-            sep = "|"
+            sep = "-"
             to_list = lambda x: [int(y) for y in x.split(sep)]
             patch_size = to_list(patch_size)
         if self.print_level > 0:

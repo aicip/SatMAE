@@ -8,7 +8,7 @@ EPOCHS=200
 INPUT_SIZE=64
 BATCH_SIZE=128
 
-PATCH_SIZES="4|4"
+PATCH_SIZES="4-4"
 MASK_RATIO='0.75'
 # MASK_RATIO='0.60'
 # LR=0.0001
@@ -38,12 +38,12 @@ OUT_DIR_BASE="/data2/HDD_16TB/ICCV/Model_Saving"
 # Data path for com2044
 # OUT_DIR_BASE="/mnt/com1822_HDD_16TB/ICCV/Model_Saving"
 
-OUT_DIR="${OUT_DIR_BASE}/out_${MODEL_NAME}_i${INPUT_SIZE}_p${PATCH_SIZES}_e${EPOCHS}_${ATTENTION}_ratio${MASK_RATIO}_lr${LR}_loss${LOSS}"
+OUT_DIR="${OUT_DIR_BASE}/out_${MODEL_NAME}_i${INPUT_SIZE}_p${PATCH_SIZES}_e${EPOCHS}_mask${MASK_RATIO}_${LOSS}_lr${LR}"
 
-RESUME="${OUT_DIR_BASE}/out_cross_shunted_2s_mae_vit_tiny_i64_p4|4_e200_shunted_ratio0.75_lr0.001_lossl1"
-START_EPOCH=35
-RESUME="${RESUME}/checkpoint-${START_EPOCH}.pth"
-OUT_DIR="${OUT_DIR}_resume"
+# RESUME="${OUT_DIR_BASE}/out_mae_vit_tiny_shunted_2st_cross_i64_p4-4_e200_mask0.75_l1_lr0.001"
+# START_EPOCH=100
+# RESUME="${RESUME}/checkpoint-${START_EPOCH}.pth"
+# OUT_DIR="${OUT_DIR}_resume"
 
 WANDB="satmae"
 

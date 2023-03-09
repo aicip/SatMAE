@@ -368,9 +368,9 @@ def main(args):
         if args.attn_name == "shunted":
             if "shunted" not in args.model:
                 raise ValueError("shunted attention only supported for shunted models")
-            sep = "|"
+            sep = "-"
             to_list = lambda x: [int(y) for y in x.split(sep)]
-            args.patch_size = to_list(args.patch_size)  # e.g. '16|16' -> [16, 16]
+            args.patch_size = to_list(args.patch_size)  # e.g. '16-16' -> [16, 16]
 
         model = models_mae.__dict__[args.model](**vars(args))
     model.to(device)
