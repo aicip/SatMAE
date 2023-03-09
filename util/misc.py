@@ -87,6 +87,8 @@ class MetricLogger(object):
         self.meters = defaultdict(SmoothedValue)
         self.delimiter = delimiter
 
+        self.MB = 1024.0 * 1024.0
+
     def update(self, **kwargs):
         for k, v in kwargs.items():
             if v is None:
@@ -102,13 +104,11 @@ class MetricLogger(object):
         if attr in self.__dict__:
             return self.__dict__[attr]
         raise AttributeError(
-            "'{}' object has no attribute '{}'".format(type(self).__name__, attr)
+            f"'{type(self).__name__}' object has no attribute '{attr}'"
         )
 
     def __str__(self):
-        loss_str = []
-        for name, meter in self.meters.items():
-            loss_str.append("{}: {}".format(name, str(meter)))
+        loss_str = [f"{name}: {str(meter)}" for name, meter in self.meters.items()]
         return self.delimiter.join(loss_str)
 
     def synchronize_between_processes(self):
@@ -119,63 +119,69 @@ class MetricLogger(object):
         self.meters[name] = meter
 
     def log_every(self, iterable, print_freq, header=None):
-        i = 0
         if not header:
             header = ""
         start_time = time.time()
         end = time.time()
         iter_time = SmoothedValue(fmt="{avg:.4f}")
         data_time = SmoothedValue(fmt="{avg:.4f}")
-        space_fmt = ":" + str(len(str(len(iterable)))) + "d"
+        space_fmt = f":{len(str(len(iterable)))}d"
         log_msg = [
             header,
             "[{0" + space_fmt + "}/{1}]",
             "eta: {eta}",
             "{meters}",
-            "time: {time}",
-            "data: {data}",
+            "iter_time: {iter_time}",
+            "data_time: {data_time}",
         ]
         if torch.cuda.is_available():
-            log_msg.append("max mem: {memory:.0f}")
+            log_msg.append("memory: {memory:.0f}")
+
         log_msg = self.delimiter.join(log_msg)
-        MB = 1024.0 * 1024.0
-        for obj in iterable:
+
+        for i, obj in enumerate(iterable):
             data_time.update(time.time() - end)
             yield obj
             iter_time.update(time.time() - end)
             if i % print_freq == 0 or i == len(iterable) - 1:
                 eta_seconds = iter_time.global_avg * (len(iterable) - i)
-                eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
+                eta_str = str(datetime.timedelta(seconds=int(eta_seconds)))
                 if torch.cuda.is_available():
+                    memory_alloc = torch.cuda.max_memory_allocated() / self.MB
                     print(
                         log_msg.format(
                             i,
                             len(iterable),
-                            eta=eta_string,
+                            eta=eta_str,
                             meters=str(self),
-                            time=str(iter_time),
-                            data=str(data_time),
-                            memory=torch.cuda.max_memory_allocated() / MB,
+                            iter_time=str(iter_time),
+                            data_time=str(data_time),
+                            memory=memory_alloc,
                         )
                     )
+                    self.update(memory_alloc=memory_alloc)
                 else:
                     print(
                         log_msg.format(
                             i,
                             len(iterable),
-                            eta=eta_string,
+                            eta=eta_str,
                             meters=str(self),
-                            time=str(iter_time),
-                            data=str(data_time),
+                            iter_time=str(iter_time),
+                            data_time=str(data_time),
                         )
                     )
-            i += 1
             end = time.time()
+        # Seconds
         total_time = time.time() - start_time
+        total_time_per_it = total_time / len(iterable)
+
+        self.update(time_epoch=total_time, time_step=total_time_per_it)
+
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
         print(
             "{} Total time: {} ({:.4f} s / it)".format(
-                header, total_time_str, total_time / len(iterable)
+                header, total_time_str, total_time_per_it
             )
         )
 
@@ -198,23 +204,15 @@ def setup_for_distributed(is_master):
 
 
 def is_dist_avail_and_initialized():
-    if not dist.is_available():
-        return False
-    if not dist.is_initialized():
-        return False
-    return True
+    return bool(dist.is_initialized()) if dist.is_available() else False
 
 
 def get_world_size():
-    if not is_dist_avail_and_initialized():
-        return 1
-    return dist.get_world_size()
+    return dist.get_world_size() if is_dist_avail_and_initialized() else 1
 
 
 def get_rank():
-    if not is_dist_avail_and_initialized():
-        return 0
-    return dist.get_rank()
+    return dist.get_rank() if is_dist_avail_and_initialized() else 0
 
 
 def is_main_process():
@@ -257,9 +255,7 @@ def init_distributed_mode(args):
     torch.cuda.set_device(args.gpu)
     args.dist_backend = "nccl"
     print(
-        "| distributed init (rank {}): {}, gpu {}, world size {}".format(
-            args.rank, args.dist_url, args.gpu, args.world_size
-        ),
+        f"| distributed init (rank {args.rank}): {args.dist_url}, gpu {args.gpu}, world size {args.world_size}",
         flush=True,
     )
     torch.distributed.init_process_group(
@@ -335,7 +331,7 @@ def save_model(args, epoch, model, model_without_ddp, optimizer, loss_scaler):
     output_dir = Path(args.output_dir)
     epoch_name = str(epoch)
     if loss_scaler is not None:
-        checkpoint_paths = [output_dir / ("checkpoint-%s.pth" % epoch_name)]
+        checkpoint_paths = [output_dir / f"checkpoint-{epoch_name}.pth"]
         for checkpoint_path in checkpoint_paths:
             to_save = {
                 "model": model_without_ddp.state_dict(),
@@ -350,41 +346,41 @@ def save_model(args, epoch, model, model_without_ddp, optimizer, loss_scaler):
         client_state = {"epoch": epoch}
         model.save_checkpoint(
             save_dir=args.output_dir,
-            tag="checkpoint-%s" % epoch_name,
+            tag=f"checkpoint-{epoch_name}",
             client_state=client_state,
         )
 
 
 def load_model(args, model_without_ddp, optimizer, loss_scaler):
-    if args.resume:
-        if args.resume.startswith("https"):
-            checkpoint = torch.hub.load_state_dict_from_url(
-                args.resume, map_location="cpu", check_hash=True
-            )
-        else:
-            checkpoint = torch.load(args.resume, map_location="cpu")
-            # del checkpoint['model']['head.weight']
-            # del checkpoint['model']['head.bias']
-        model_without_ddp.load_state_dict(checkpoint["model"], strict=False)
-        print("Resume checkpoint %s" % args.resume)
-        if (
-            "optimizer" in checkpoint
-            and "epoch" in checkpoint
-            and not (hasattr(args, "eval") and args.eval)
-        ):
-            optimizer.load_state_dict(checkpoint["optimizer"])
-            args.start_epoch = checkpoint["epoch"] + 1
-            if "scaler" in checkpoint:
-                loss_scaler.load_state_dict(checkpoint["scaler"])
-            print("With optim & sched!")
+    if not args.resume:
+        print(f"Not resuming from checkpoint {args.resume}")
+        return
+    checkpoint = (
+        torch.hub.load_state_dict_from_url(
+            args.resume, map_location="cpu", check_hash=True
+        )
+        if args.resume.startswith("https")
+        else torch.load(args.resume, map_location="cpu")
+    )
+    model_without_ddp.load_state_dict(checkpoint["model"], strict=False)
+    print(f"Resume checkpoint {args.resume}")
+    if (
+        "optimizer" in checkpoint
+        and "epoch" in checkpoint
+        and not (hasattr(args, "eval") and args.eval)
+    ):
+        optimizer.load_state_dict(checkpoint["optimizer"])
+        args.start_epoch = checkpoint["epoch"] + 1
+        if "scaler" in checkpoint:
+            loss_scaler.load_state_dict(checkpoint["scaler"])
+        print("With optim & sched!")
 
 
 def all_reduce_mean(x):
     world_size = get_world_size()
-    if world_size > 1:
-        x_reduce = torch.tensor(x).cuda()
-        dist.all_reduce(x_reduce)
-        x_reduce /= world_size
-        return x_reduce.item()
-    else:
+    if world_size <= 1:
         return x
+    x_reduce = torch.tensor(x).cuda()
+    dist.all_reduce(x_reduce)
+    x_reduce /= world_size
+    return x_reduce.item()
