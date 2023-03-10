@@ -164,6 +164,7 @@ def add_noise(image, noise_type="gaussian", noise_param=0.1):
     return noisy_image
 
 
+@torch.no_grad()
 def run_one_image(img, model, seed: Optional[int] = None, device=None):
     if "patch_size" not in model.__dict__:  # for shunted models
         patch_size = model.patch_sizes[-1]
