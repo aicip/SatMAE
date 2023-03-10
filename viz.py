@@ -281,7 +281,7 @@ def plot_comp(
     fig, axs = plt.subplots(
         len(models),
         5,
-        figsize=(figsize, len(models) * figsize / 5),
+        figsize=(figsize, len(models) * figsize / 4),
     )
 
     if title is not None:
