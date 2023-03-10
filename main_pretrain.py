@@ -13,14 +13,14 @@ import socket
 import time
 import traceback
 from pathlib import Path
-
+from copy import copy
 import numpy as np
 
 # assert timm.__version__ == "0.3.2"  # version check
 import timm.optim.optim_factory as optim_factory
 import torch
 import torch.backends.cudnn as cudnn
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter # type: ignore
 
 import models_mae
 import models_mae_group_channels
@@ -32,6 +32,11 @@ from engine_pretrain import train_one_epoch, train_one_epoch_temporal
 from util.datasets import build_fmow_dataset
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 
+
+def nullable_string(val):
+    if not val:
+        return None
+    return val
 
 def get_args_parser():
     parser = argparse.ArgumentParser("MAE pre-training", add_help=False)
@@ -256,10 +261,11 @@ def get_args_parser():
 
     parser.add_argument(
         "--resume",
-        type=str,
+        type=nullable_string,
         default=None,
         help="The path to the checkpoint to resume training from.",
     )
+    
     parser.add_argument(
         "--start_epoch",
         type=int,
@@ -274,11 +280,20 @@ def get_args_parser():
         default="utk-iccv23",
         help="Wandb entity name, eg: utk-iccv23",
     )
+    
     parser.add_argument(
         "--wandb_project",
         type=str,
         default=None,
         help="Wandb project name, eg: satmae",
+    )
+    
+    # https://docs.wandb.ai/guides/runs/resuming
+    parser.add_argument(
+        "--wandb_id",
+        type=nullable_string,
+        default=None,
+        help="Wandb project id, eg: 83faqrtq",
     )
 
     parser.add_argument(
@@ -337,14 +352,14 @@ def main(args):
 
     if args.distributed:  # args.distributed:
         num_tasks = misc.get_world_size()
-        sampler_train = torch.utils.data.DistributedSampler(
+        sampler_train = torch.utils.data.DistributedSampler( # type: ignore
             dataset_train, num_replicas=num_tasks, rank=misc.get_rank(), shuffle=True
         )
         print(f"Sampler_train = {str(sampler_train)}")
     else:
-        sampler_train = torch.utils.data.RandomSampler(dataset_train)
+        sampler_train = torch.utils.data.RandomSampler(dataset_train) # type: ignore
 
-    data_loader_train = torch.utils.data.DataLoader(
+    data_loader_train = torch.utils.data.DataLoader( # type: ignore
         dataset_train,
         sampler=sampler_train,
         batch_size=args.batch_size,
@@ -377,9 +392,9 @@ def main(args):
         if args.attn_name == "shunted":
             if "shunted" not in args.model:
                 raise ValueError("shunted attention only supported for shunted models")
-            sep = "|"
+            sep = "+"
             to_list = lambda x: [int(y) for y in x.split(sep)]
-            args.patch_size = to_list(args.patch_size)  # e.g. '16|16' -> [16, 16]
+            args.patch_size = to_list(args.patch_size)  # e.g. '16+16' -> [16, 16]
 
         model = models_mae.__dict__[args.model](**vars(args))
     model.to(device)
@@ -454,16 +469,42 @@ def main(args):
     log_writer = None
     if misc.is_main_process():
         if args.wandb_entity is not None and args.wandb_project is not None:
+            # resume: (bool, str, optional) Sets the resuming behavior. Options:
+            # `"allow"`, `"must"`, `"never"`, `"auto"` or `None`. Defaults to `None`.
+            # Cases:
+            # - `None` (default): If the new run has the same ID as a previous run,
+            #     this run overwrites that data.
+            # - `"auto"` (or `True`): if the preivous run on this machine crashed,
+            #     automatically resume it. Otherwise, start a new run.
+            # - `"allow"`: if id is set with `init(id="UNIQUE_ID")` or
+            #     `WANDB_RUN_ID="UNIQUE_ID"` and it is identical to a previous run,
+            #     wandb will automatically resume the run with that id. Otherwise,
+            #     wandb will start a new run.
+            # - `"never"`: if id is set with `init(id="UNIQUE_ID")` or
+            #     `WANDB_RUN_ID="UNIQUE_ID"` and it is identical to a previous run,
+            #     wandb will crash.
+            # - `"must"`: if id is set with `init(id="UNIQUE_ID")` or
+            #     `WANDB_RUN_ID="UNIQUE_ID"` and it is identical to a previous run,
+            #     wandb will automatically resume the run with the id. Otherwise
+            #     wandb will crash.
+            wandb_id = (wandb.util.generate_id() if args.resume is None  # type: ignore
+                        else args.wandb_id)
             wandb.init(
                 entity=args.wandb_entity,
                 project=args.wandb_project,
                 name=model_name,
                 group=args.model,
                 job_type="pretrain",
+                resume=None if args.resume is None else "must",
+                id=wandb_id,
             )
-            wandb.config.update(args)
+            wandb_args = copy(args)
+            if args.resume is not None:
+                wandb_args.start_epoch += 1
+            wandb.config.update(wandb_args, allow_val_change=True)
             wandb.config.update(
-                {"num_params": model_num_params, "batch_size_eff": batch_size_eff}
+                {"num_params": model_num_params, 
+                 "batch_size_eff": batch_size_eff}
             )
             wandb.watch(model)
         else:

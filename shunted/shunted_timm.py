@@ -1,3 +1,5 @@
+# Took parts from SSA.py 
+# https://github.com/OliverRensu/Shunted-Transformer/blob/master/SSA.py
 import torch
 import torch.nn as nn
 from torch import _assert
