@@ -204,7 +204,7 @@ def main(args):
     args.mask_ratio = 0.75
     args.input_size = 64
     args.batch_size = 256
-    args.patch_size = '4-4'
+    args.patch_size = '4+4'
 
     # args.train_path=f"{root}/fmow-rgb-preproc/train_{args.input_size}.csv" # 1822
     args.train_path = f"{root}/fmow-rgb-preproc/train_{args.input_size}_com2044.csv" # 2044
@@ -242,9 +242,9 @@ def main(args):
         if 'shunted' not in args.model:
             raise ValueError(
                 'shunted attention only supported for shunted models')
-        sep = '-'
+        sep = '+'
         to_list = lambda x: [int(y) for y in x.split(sep)]
-        args.patch_size = to_list(args.patch_size)  # e.g. '16-16' -> [16, 16]
+        args.patch_size = to_list(args.patch_size)  # e.g. '16+16' -> [16, 16]
             
     model = models_mae.__dict__[args.model](**vars(args))
 

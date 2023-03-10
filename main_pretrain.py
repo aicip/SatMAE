@@ -33,6 +33,11 @@ from util.datasets import build_fmow_dataset
 from util.misc import NativeScalerWithGradNormCount as NativeScaler
 
 
+def nullable_string(val):
+    if not val:
+        return None
+    return val
+
 def get_args_parser():
     parser = argparse.ArgumentParser("MAE pre-training", add_help=False)
     parser.add_argument(
@@ -245,7 +250,7 @@ def get_args_parser():
 
     parser.add_argument(
         "--resume",
-        type=str,
+        type=nullable_string,
         default=None,
         help="The path to the checkpoint to resume training from.",
     )
@@ -270,6 +275,14 @@ def get_args_parser():
         type=str,
         default=None,
         help="Wandb project name, eg: satmae",
+    )
+    
+    # https://docs.wandb.ai/guides/runs/resuming
+    parser.add_argument(
+        "--wandb_id",
+        type=nullable_string,
+        default=None,
+        help="Wandb project id, eg: 83faqrtq",
     )
 
     parser.add_argument(
@@ -368,9 +381,9 @@ def main(args):
         if args.attn_name == "shunted":
             if "shunted" not in args.model:
                 raise ValueError("shunted attention only supported for shunted models")
-            sep = "-"
+            sep = "+"
             to_list = lambda x: [int(y) for y in x.split(sep)]
-            args.patch_size = to_list(args.patch_size)  # e.g. '16-16' -> [16, 16]
+            args.patch_size = to_list(args.patch_size)  # e.g. '16+16' -> [16, 16]
 
         model = models_mae.__dict__[args.model](**vars(args))
     model.to(device)
@@ -445,13 +458,34 @@ def main(args):
     log_writer = None
     if misc.is_main_process():
         if args.wandb_entity is not None and args.wandb_project is not None:
+            # resume: (bool, str, optional) Sets the resuming behavior. Options:
+            # `"allow"`, `"must"`, `"never"`, `"auto"` or `None`. Defaults to `None`.
+            # Cases:
+            # - `None` (default): If the new run has the same ID as a previous run,
+            #     this run overwrites that data.
+            # - `"auto"` (or `True`): if the preivous run on this machine crashed,
+            #     automatically resume it. Otherwise, start a new run.
+            # - `"allow"`: if id is set with `init(id="UNIQUE_ID")` or
+            #     `WANDB_RUN_ID="UNIQUE_ID"` and it is identical to a previous run,
+            #     wandb will automatically resume the run with that id. Otherwise,
+            #     wandb will start a new run.
+            # - `"never"`: if id is set with `init(id="UNIQUE_ID")` or
+            #     `WANDB_RUN_ID="UNIQUE_ID"` and it is identical to a previous run,
+            #     wandb will crash.
+            # - `"must"`: if id is set with `init(id="UNIQUE_ID")` or
+            #     `WANDB_RUN_ID="UNIQUE_ID"` and it is identical to a previous run,
+            #     wandb will automatically resume the run with the id. Otherwise
+            #     wandb will crash.
+            wandb_id = (wandb.util.generate_id() if args.resume is None  # type: ignore
+                        else args.wandb_id)
             wandb.init(
                 entity=args.wandb_entity,
                 project=args.wandb_project,
                 name=model_name,
                 group=args.model,
                 job_type="pretrain",
-                resume=True if args.resume is not None else False,
+                resume=None if args.resume is None else "must",
+                id=wandb_id,
             )
             wandb.config.update(args)
             wandb.config.update(

@@ -49,7 +49,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         super().__init__()
         self.print_level = print_level
         if isinstance(patch_size, str):
-            sep = "-"
+            sep = "+"
             to_list = lambda x: [int(y) for y in x.split(sep)]
             patch_size = to_list(patch_size)
         if self.print_level > 0:
@@ -561,7 +561,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
     def forward_loss_mse(self, 
                          imgs: torch.Tensor, 
                          pred: torch.Tensor, 
-                         mask: torch.Tensor) -> torch.Tensor:
+                         mask: Union[None, torch.Tensor]) -> torch.Tensor:
         """
         imgs: [N, 3, H, W]
         pred: [N, L, p*p*3]
@@ -569,7 +569,8 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         """
         if self.print_level > 1:
             print("--" * 8, " Loss ", "--" * 8)
-            print(f"In mask.shape: {mask.shape}")
+            if mask is not None:
+                print(f"In mask.shape: {mask.shape}")
             print(f"In pred.shape: {pred.shape}")
         target = imgs
         if self.print_level > 1:
@@ -590,14 +591,15 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             print(f"(pred-target).shape: ({pred.shape}-{target.shape})")
         loss = (pred - target) ** 2
         loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
-        loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
+        
+        loss = (loss * mask).sum() / mask.sum() if mask is not None else loss.mean()
 
         return loss
 
     def forward_loss_l1(self, 
                         imgs: torch.Tensor, 
                         pred: torch.Tensor, 
-                        mask: torch.Tensor) -> torch.Tensor:
+                        mask: Union[None, torch.Tensor]) -> torch.Tensor:
         """
         imgs: [N, 3, H, W]
         pred: [N, L, p*p*3]
@@ -606,7 +608,8 @@ class MaskedAutoencoderShuntedViT(nn.Module):
 
         if self.print_level > 1:
             print("--" * 8, " Loss ", "--" * 8)
-            print(f"In mask.shape: {mask.shape}")
+            if mask is not None:
+                print(f"In mask.shape: {mask.shape}")
             print(f"In pred.shape: {pred.shape}")
         target = imgs
         if self.print_level > 1:
@@ -637,8 +640,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         # torch.Size([512, 64])
 
         # mean loss on removed patches
-        loss = (loss * mask).sum() / mask.sum()
-
+        loss = (loss * mask).sum() / mask.sum() if mask is not None else loss.mean()
         return loss
 
     def forward(self, 
@@ -652,13 +654,16 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             
         latent, mask, ids_restore = self.forward_encoder(imgs)
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
-        if self.loss == "mse":
-            loss = self.forward_loss_mse(imgs, pred, mask)
-        elif self.loss == "l1":
-            loss = self.forward_loss_l1(imgs, pred, mask)
+        
+        loss_full = self.loss.endswith("full")
+        loss_mask = None if loss_full else mask
+        if self.loss.startswith("mse"):
+            loss = self.forward_loss_mse(imgs, pred, mask=loss_mask)
+        elif self.loss.startswith("l1"):
+            loss = self.forward_loss_l1(imgs, pred, mask=loss_mask)
         else:
             raise ValueError(f"Loss type {self.loss} not supported.")
-        # loss = self.forward_loss(imgs, pred, mask)
+
         if self.print_level > 1:
             raise Exception("Stopping because you set the print_level > 1.")
         return loss, pred, mask
