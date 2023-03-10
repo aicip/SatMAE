@@ -1,7 +1,9 @@
+from typing import Tuple, Union
 import math
 import torch
 import torch.nn as nn
 
+from typing import List
 from timm.models.vision_transformer import Block
 from shunted import Block as ShuntedBlock
 from shunted import Head as ShuntedHead
@@ -9,46 +11,45 @@ from shunted import OverlapPatchEmbed
 from shunted import PatchEmbed as ShuntedPatchEmbed
 from util.pos_embed import get_2d_sincos_pos_embed
 
-
 class MaskedAutoencoderShuntedViT(nn.Module):
     """Masked Autoencoder with Shunted VisionTransformer backbone"""
-
+    # TODO: Remove print_level and print after model is 100% stable
     def __init__(
         self,
         # MAE arguments
-        input_size=None,
-        input_channels=3,
-        patch_size=None,
-        dim_model=None,
+        input_size: int = 64,
+        input_channels: int = 3,
+        patch_size: List[int] = [4, 4],
+        dim_model: List[int] = [512, 768],
         # Encoder Parameters
-        encoder_num_heads=None,
-        encoder_num_layers=None,
+        encoder_num_layers: List[int] = [8, 12],
+        encoder_num_heads: List[int] =[ 8, 12],
         # Decoder paramters
-        decoder_embed_dim=None,
-        decoder_num_layers=None,
-        decoder_num_heads=None,
+        decoder_embed_dim: int = 512,
+        decoder_num_layers: int = 8,
+        decoder_num_heads: int = 16,
         # Feedforward parameters
-        mlp_ratios=None,
-        norm_pix_loss=False,
-        drop_path_rate=0.0,
-        mask_ratio=0.75,
+        mlp_ratios: List[int] = [4, 4],
+        norm_pix_loss: bool = False,
+        drop_path_rate: float = 0.0,
+        mask_ratio: float = 0.75,
         # shunted arguments
-        drop_rate=0.0,
-        attn_drop_rate=0.0,
-        sr_ratios=None,
-        num_conv=0,
-        use_shunted_head=False,
-        use_overlap_patch_embed=False,
+        drop_rate: float = 0.0,
+        attn_drop_rate: float = 0.0,
+        sr_ratios: List[int] = [2, 1],
+        num_conv: int = 0 ,
+        use_shunted_head: bool = False,
+        use_overlap_patch_embed: bool = False,
         # Others
-        print_level=0,  # for level>1 it ony runs one pass
-        norm_layer=nn.LayerNorm,
-        loss="mse",
+        print_level: int = 0,  # for level>1 it ony runs one pass
+        norm_layer = nn.LayerNorm,
+        loss: str = "mse",
         **kwargs,
     ):
         super().__init__()
         self.print_level = print_level
         if isinstance(patch_size, str):
-            sep = "|"
+            sep = "+"
             to_list = lambda x: [int(y) for y in x.split(sep)]
             patch_size = to_list(patch_size)
         if self.print_level > 0:
@@ -222,8 +223,10 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             print(f"mask_token.shape: {self.mask_token.shape}")
 
         self.decoder_pos_embed = nn.Parameter(
-            torch.zeros(
-                1, self.patch_embed1.num_patches + 1, decoder_embed_dim  # +1: cls_token
+            torch.zeros(# +1: cls_token
+                1, 
+                self.patch_embed1.num_patches + 1, # type: ignore
+                decoder_embed_dim  
             ),
             requires_grad=False,
         )  # fixed sin-cos embedding
@@ -258,7 +261,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
 
         self.initialize_weights()
 
-    def initialize_weights(self):
+    def initialize_weights(self) -> None:
         if self.print_level > 0:
             print("--" * 8, "Init Weights", "--" * 8)
         # initialization
@@ -320,7 +323,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         # initialize nn.Linear and nn.LayerNorm
         self.apply(self._init_weights)
 
-    def _init_weights(self, m):
+    def _init_weights(self, m) -> None:
         if isinstance(m, nn.Linear):
             # we use xavier_uniform following official JAX ViT:
             torch.nn.init.xavier_uniform_(m.weight)
@@ -336,7 +339,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             if m.bias is not None:
                 m.bias.data.zero_()
 
-    def patchify(self, imgs, p, c):
+    def patchify(self, imgs: torch.Tensor, p: int, c: int) -> torch.Tensor:
         """
         imgs: (N, C, H, W)
         p: Patch embed patch size
@@ -361,7 +364,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         x = x.reshape(shape=(imgs.shape[0], h * w, p**2 * c))
         return x
 
-    def unpatchify(self, x, p, c):
+    def unpatchify(self, x: torch.Tensor, p: int, c: int) -> torch.Tensor:
         """
         x: (N, L, patch_size**2 *C)
         p: Patch embed patch size
@@ -378,7 +381,9 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         imgs = x.reshape(shape=(x.shape[0], c, h * p, h * p))
         return imgs
 
-    def random_masking(self, x):
+    def random_masking(self, x: torch.Tensor) -> Tuple[torch.Tensor, 
+                                                       torch.Tensor, 
+                                                       torch.Tensor]:
         """
         Perform per-sample random masking by per-sample shuffling.
         Per-sample shuffling is done by argsort random noise.
@@ -412,7 +417,9 @@ class MaskedAutoencoderShuntedViT(nn.Module):
 
         return x_masked, mask, ids_restore
 
-    def forward_encoder(self, x):
+    def forward_encoder(self, x: torch.Tensor) -> Tuple[torch.Tensor, 
+                                                       torch.Tensor, 
+                                                       torch.Tensor]:
         B = x.shape[0]  # Batch Size
         if self.print_level > 1:
             print("--" * 8, " Encoder ", "--" * 8)
@@ -490,9 +497,9 @@ class MaskedAutoencoderShuntedViT(nn.Module):
                         f"\tOutput x.contiguous().shape: {x.reshape(B, H, W, -1).permute(0, 3, 1, 2).contiguous().shape}"
                     )
 
-        return x, mask, ids_restore
+        return x, mask, ids_restore # type: ignore
 
-    def forward_decoder(self, x, ids_restore):
+    def forward_decoder(self, x: torch.Tensor, ids_restore: torch.Tensor) -> torch.Tensor:
         if self.print_level > 1:
             print("--" * 8, " Decoder ", "--" * 8)
             print(f"In x.shape: {x.shape}")
@@ -551,7 +558,10 @@ class MaskedAutoencoderShuntedViT(nn.Module):
 
         return x
 
-    def forward_loss_mse(self, imgs, pred, mask):
+    def forward_loss_mse(self, 
+                         imgs: torch.Tensor, 
+                         pred: torch.Tensor, 
+                         mask: Union[None, torch.Tensor]) -> torch.Tensor:
         """
         imgs: [N, 3, H, W]
         pred: [N, L, p*p*3]
@@ -559,7 +569,8 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         """
         if self.print_level > 1:
             print("--" * 8, " Loss ", "--" * 8)
-            print(f"In mask.shape: {mask.shape}")
+            if mask is not None:
+                print(f"In mask.shape: {mask.shape}")
             print(f"In pred.shape: {pred.shape}")
         target = imgs
         if self.print_level > 1:
@@ -580,11 +591,15 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             print(f"(pred-target).shape: ({pred.shape}-{target.shape})")
         loss = (pred - target) ** 2
         loss = loss.mean(dim=-1)  # [N, L], mean loss per patch
-        loss = (loss * mask).sum() / mask.sum()  # mean loss on removed patches
+        
+        loss = (loss * mask).sum() / mask.sum() if mask is not None else loss.mean()
 
         return loss
 
-    def forward_loss_l1(self, imgs, pred, mask):
+    def forward_loss_l1(self, 
+                        imgs: torch.Tensor, 
+                        pred: torch.Tensor, 
+                        mask: Union[None, torch.Tensor]) -> torch.Tensor:
         """
         imgs: [N, 3, H, W]
         pred: [N, L, p*p*3]
@@ -593,7 +608,8 @@ class MaskedAutoencoderShuntedViT(nn.Module):
 
         if self.print_level > 1:
             print("--" * 8, " Loss ", "--" * 8)
-            print(f"In mask.shape: {mask.shape}")
+            if mask is not None:
+                print(f"In mask.shape: {mask.shape}")
             print(f"In pred.shape: {pred.shape}")
         target = imgs
         if self.print_level > 1:
@@ -624,23 +640,30 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         # torch.Size([512, 64])
 
         # mean loss on removed patches
-        loss = (loss * mask).sum() / mask.sum()
-
+        loss = (loss * mask).sum() / mask.sum() if mask is not None else loss.mean()
         return loss
 
-    def forward(self, imgs, mask_seed=None, **kwargs):
+    def forward(self, 
+                imgs: torch.Tensor, 
+                mask_seed: Union[None, int] = None, 
+                **kwargs) -> Tuple[torch.Tensor, 
+                                   torch.Tensor, 
+                                   torch.Tensor]:
         if mask_seed is not None:
             torch.manual_seed(mask_seed)
             
         latent, mask, ids_restore = self.forward_encoder(imgs)
         pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
-        if self.loss == "mse":
-            loss = self.forward_loss_mse(imgs, pred, mask)
-        elif self.loss == "l1":
-            loss = self.forward_loss_l1(imgs, pred, mask)
+        
+        loss_full = self.loss.endswith("full")
+        loss_mask = None if loss_full else mask
+        if self.loss.startswith("mse"):
+            loss = self.forward_loss_mse(imgs, pred, mask=loss_mask)
+        elif self.loss.startswith("l1"):
+            loss = self.forward_loss_l1(imgs, pred, mask=loss_mask)
         else:
             raise ValueError(f"Loss type {self.loss} not supported.")
-        # loss = self.forward_loss(imgs, pred, mask)
+
         if self.print_level > 1:
             raise Exception("Stopping because you set the print_level > 1.")
         return loss, pred, mask
