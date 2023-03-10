@@ -525,9 +525,12 @@ class MaskedAutoencoderViT(nn.Module):
             var = target.var(dim=-1, keepdim=True)
             target = (target - mean) / (var + 1.0e-6) ** 0.5
 
+        # scale target to min 0, max 1
+        target = (target - target.min()) / (target.max() - target.min() + 1.0e-6)
+
         loss = F.binary_cross_entropy_with_logits(pred, target, reduction="none")
         # cross entropy per patch
-        loss = loss.sum(dim=-1)
+        loss = loss.mean(dim=-1)
         # print("loss", loss.shape)
         # torch.Size([512, 64])
 
