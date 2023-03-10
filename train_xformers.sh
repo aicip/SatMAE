@@ -10,32 +10,20 @@ FFN_NAME="MLP"
 LR=0.0005
 
 MODEL=$1
-LOSS=$2
-ATTENTION=$3
+ATTENTION=$2
+LOSS=$3
 
-if [ -z "$MODEL" ]; then
-    echo "Usage: $0 <model> <loss> <attention> [additional flags]"
-    echo "Losses: mse, l1"
-    echo "Attentions: scaled_dot_product, linformer, orthoformer, random, local, nystrom, fourier_mix"
+function usage {
+    echo "Usage: $0 <model> <attention> <loss> [additional flags]"
     exit 1
-fi
-shift
+}
 
-if [ -z "$LOSS" ]; then
-    echo "Usage: $0 <model> <loss> <attention> [additional flags]"
-    echo "Losses: mse, l1"
-    echo "Attentions: scaled_dot_product, linformer, orthoformer, random, local, nystrom, fourier_mix"
-    exit 1
+# if any of the above are empty, then usage
+if [ -z "$MODEL" ] || [ -z "$ATTENTION" ] || [ -z "$LOSS" ]; then
+    usage
 fi
-shift
 
-if [ -z "$ATTENTION" ]; then
-    echo "Usage: $0 <model> <loss> <attention> [additional flags]"
-    echo "Losses: mse, l1"
-    echo "Attentions: scaled_dot_product, linformer, orthoformer, random, local, nystrom, fourier_mix"
-    exit 1
-fi
-shift
+shift 3
 
 IN_PATH_BASE="../fmow-rgb-preproc"
 IN_PATH="${IN_PATH_BASE}/train_${INPUT_SIZE}.csv"
