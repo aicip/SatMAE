@@ -1,3 +1,4 @@
+from typing import Union, Tuple
 import random
 import torch
 import torch.nn as nn
@@ -13,9 +14,9 @@ class MaskedAutoencoderShuntedViTCross(MaskedAutoencoderShuntedViT):
 
     def __init__(
         self,
-        augment_fn1=None,
-        augment_fn2=None,
-        predictor_hidden_size=2048,
+        augment_fn1: Union[nn.Sequential, None] = None,
+        augment_fn2: Union[nn.Sequential, None] = None,
+        predictor_hidden_size: int = 2048,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -34,10 +35,15 @@ class MaskedAutoencoderShuntedViTCross(MaskedAutoencoderShuntedViT):
         self.augment2 = default(augment_fn2, AUG2)
         # may need to be modified to keep size consistency
         self.predictor = MLP(
-            self.decoder_embed_dim, self.patch_embed1.num_patches, predictor_hidden_size
+            self.decoder_embed_dim, 
+            self.patch_embed1.num_patches, # type: ignore
+            predictor_hidden_size
         )
 
-    def forward_decoder(self, x, ids_restore):
+    def forward_decoder(self, 
+                        x: torch.Tensor, 
+                        ids_restore: torch.Tensor) -> Union[torch.Tensor, 
+                                                            torch.Tensor]:
         if self.print_level > 1:
             print("--" * 8, " Decoder ", "--" * 8)
             print(f"In x.shape: {x.shape}")
@@ -86,7 +92,7 @@ class MaskedAutoencoderShuntedViTCross(MaskedAutoencoderShuntedViT):
         #     print(f"norm.x.shape: {x.shape}")
 
         # predictor projection
-        x = self.decoder_pred(dec_emd)
+        x = self.decoder_pred(dec_emd) # type: ignore
         if self.print_level > 1:
             print(f"decoder_pred.x.shape: {x.shape}")
 
@@ -95,14 +101,19 @@ class MaskedAutoencoderShuntedViTCross(MaskedAutoencoderShuntedViT):
         if self.print_level > 1:
             print(f"out.x.shape: {x.shape}")
 
-        return x, dec_emd
+        return x, dec_emd # type: ignore
 
-    def forward(self, imgs, mask_seed = None, consistent_mask=False, 
-                **kwargs):
+    def forward(self, 
+                imgs: torch.Tensor, 
+                mask_seed: Union[None, int] = None, 
+                consistent_mask: bool = False,
+                **kwargs) -> Tuple[torch.Tensor, 
+                                   torch.Tensor, 
+                                   torch.Tensor]:
         img1, img2 = self.augment1(imgs), self.augment2(imgs)
 
         if mask_seed is None and consistent_mask:
-            mask_seed = torch.randint(0, 100000000, (1,)).item()            
+            mask_seed = int(torch.randint(0, 100000000, (1,)).item())        
         if mask_seed is not None:
             torch.manual_seed(mask_seed)
             

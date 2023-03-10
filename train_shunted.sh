@@ -1,67 +1,68 @@
 #!/bin/bash
-# !/bin/zsh
 
-DEVICE="cuda:1"
-
+##################### Defaults #####################
 EPOCHS=200
-
 INPUT_SIZE=64
-BATCH_SIZE=128
-
-PATCH_SIZES="4|4"
-MASK_RATIO='0.75'
-# MASK_RATIO='0.60'
-# LR=0.0001
-# LOSS="mse"
-LR=0.001
-LOSS="l1"
-
-PRINT_LEVEL=1
+PATCH_SIZES="4+4"
 ATTENTION="shunted"
+OUT_DIR_BASE="../Model_Saving"
+WANDB_PROJECT="satmae"
+START_EPOCH=0  # Modify below
+RESUME=""  # Modify below
+WANDB_ID=""  # Modify below
+# Mofify in path based on hostname
+IN_PATH_BASE="../fmow-rgb-preproc"
+IN_PATH="${IN_PATH_BASE}/train_${INPUT_SIZE}"
+if ! hostname | grep -q "^com1822"; then
+  IN_PATH="${IN_PATH}_com2044"
+fi
+IN_PATH="${IN_PATH}.csv"
+####################################################
 
-# MODEL_NAME="shunted_2s_mae_vit_tiny"
-# MODEL_NAME="shunted_2s_mae_vit_mini"
-# MODEL_NAME="mae_vit_shunted_2st_small"
-# MODEL_NAME="shunted_2s_mae_vit_base"
-MODEL_NAME="shunted_2s_mae_vit_tiny_cross"
-# MODEL_NAME="mae_vit_shunted_2st_small_cross"
+#################### Parameters ####################
+PRINT_LEVEL=1
+# ------- Model Name ------- #
+MODEL_NAME="mae_vit_tiny_shunted_2st"
+# MODEL_NAME="mae_vit_mini_shunted_2st"
+# MODEL_NAME="mae_vit_small_shunted_2st"
+# MODEL_NAME="mae_vit_base_shunted_2st"
+# MODEL_NAME="mae_vit_tiny_shunted_2st_cross"
+# MODEL_NAME="mae_vit_small_shunted_2st_cross"
 
-# Data path for com1822:
-IN_PATH_BASE="/data2/HDD_16TB"
-IN_PATH="${IN_PATH_BASE}/fmow-rgb-preproc/train_${INPUT_SIZE}.csv"
-# Data path for com2044
-# IN_PATH_BASE="/mnt/com1822_HDD_16TB"
-# IN_PATH="${IN_PATH_BASE}/fmow-rgb-preproc/train_${INPUT_SIZE}_com2044.csv"
+# ------- Run Specific ------- #
+DEVICE="cuda:3"
+BATCH_SIZE=512
+# Resume from checkpoint
+CHECKPOINT_DIR="${OUT_DIR_BASE}/out_mae_vit_tiny_shunted_2st_shunted_i64-p[4, 4]-mr0.75_e200-we40_b512-a1_l1_full_lr0.001"
+START_EPOCH=0
+RESUME="${CHECKPOINT_DIR}/checkpoint-${START_EPOCH}.pth"
+WANDB_ID="3qpkdx8k"  # take this from the run url
 
-# Data path for com1822:
-OUT_DIR_BASE="/data2/HDD_16TB/ICCV/Model_Saving"
-# Data path for com2044
-# OUT_DIR_BASE="/mnt/com1822_HDD_16TB/ICCV/Model_Saving"
-
-OUT_DIR="${OUT_DIR_BASE}/out_${MODEL_NAME}_i${INPUT_SIZE}_p${PATCH_SIZES}_e${EPOCHS}_${ATTENTION}_ratio${MASK_RATIO}_lr${LR}_loss${LOSS}"
-
-RESUME="${OUT_DIR_BASE}/out_cross_shunted_2s_mae_vit_tiny_i64_p4|4_e200_shunted_ratio0.75_lr0.001_lossl1"
-START_EPOCH=35
-RESUME="${RESUME}/checkpoint-${START_EPOCH}.pth"
-OUT_DIR="${OUT_DIR}_resume"
-
-WANDB="satmae"
+# ------- Hyperparams ------- #
+LOSS="l1_full"
+LR=0.001
+# LOSS="mse_full"
+# LR=0.0001
+MASK_RATIO='0.75'
+# MASK_RATIO='0.50'
+####################################################
 
 python3 main_pretrain.py \
---device "${DEVICE}" \
---train_path "${IN_PATH}" \
---output_dir "${OUT_DIR}" \
---input_size "${INPUT_SIZE}" \
---patch_size "${PATCH_SIZES}" \
---batch_size "${BATCH_SIZE}" \
---epochs "${EPOCHS}" \
---attn_name "${ATTENTION}" \
---print_level "${PRINT_LEVEL}" \
---model "${MODEL_NAME}" \
---lr "${LR}" \
---loss "${LOSS}" \
---mask_ratio "${MASK_RATIO}" \
---wandb "${WANDB}" \
---resume "${RESUME}" \
---start_epoch "${START_EPOCH}" \
+    --train_path "${IN_PATH}" \
+    --output_dir_base "${OUT_DIR_BASE}" \
+    --model "${MODEL_NAME}" \
+    --loss "${LOSS}" \
+    --lr "${LR}" \
+    --attn_name "${ATTENTION}" \
+    --input_size "${INPUT_SIZE}" \
+    --patch_size "${PATCH_SIZES}" \
+    --mask_ratio "${MASK_RATIO}" \
+    --batch_size "${BATCH_SIZE}" \
+    --epochs "${EPOCHS}" \
+    --device "${DEVICE}" \
+    --print_level "${PRINT_LEVEL}" \
+    --wandb_project "${WANDB_PROJECT}" \
+    --wandb_id "${WANDB_ID}" \
+    --resume "${RESUME}" \
+    --start_epoch "${START_EPOCH}" $@
  

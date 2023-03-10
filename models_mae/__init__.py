@@ -133,7 +133,7 @@ def mae_vit_huge(**kwargs):
 
 
 # --- Shunted Models --- #
-def mae_vit_shunted_2st_tiny(**kwargs):
+def mae_vit_tiny_shunted_2st(**kwargs):
     model = MaskedAutoencoderShuntedViT(
         # Encoder
         dim_model=[64, 128],
@@ -148,10 +148,10 @@ def mae_vit_shunted_2st_tiny(**kwargs):
         **kwargs,
     )
     return model
-shunted_2s_mae_vit_tiny = mae_vit_shunted_2st_tiny
+shunted_2s_mae_vit_tiny = mae_vit_tiny_shunted_2st
 
 
-def mae_vit_shunted_2st_tiny_cross(**kwargs):
+def mae_vit_tiny_shunted_2st_cross(**kwargs):
     model = MaskedAutoencoderShuntedViTCross(
         # Encoder
         dim_model=[64, 128],
@@ -166,10 +166,10 @@ def mae_vit_shunted_2st_tiny_cross(**kwargs):
         **kwargs
     )
     return model
-shunted_2s_mae_vit_tiny_cross = mae_vit_shunted_2st_tiny_cross
+shunted_2s_mae_vit_tiny_cross = mae_vit_tiny_shunted_2st_cross
 
 
-def mae_vit_shunted_2st_mini(**kwargs):
+def mae_vit_mini_shunted_2st(**kwargs):
     model = MaskedAutoencoderShuntedViT(
         # Encoder
         dim_model=[128, 256],
@@ -184,10 +184,10 @@ def mae_vit_shunted_2st_mini(**kwargs):
         **kwargs,
     )
     return model
-shunted_2s_mae_vit_mini = mae_vit_shunted_2st_mini
+shunted_2s_mae_vit_mini = mae_vit_mini_shunted_2st
 
 
-def mae_vit_shunted_2st_small(**kwargs):
+def mae_vit_small_shunted_2st(**kwargs):
     model = MaskedAutoencoderShuntedViT(
         # Encoder
         dim_model=[256, 512],
@@ -202,10 +202,10 @@ def mae_vit_shunted_2st_small(**kwargs):
         **kwargs,
     )
     return model
-shunted_2s_mae_vit_small = mae_vit_shunted_2st_small
+shunted_2s_mae_vit_small = mae_vit_small_shunted_2st
 
 
-def mae_vit_shunted_2st_small_cross(**kwargs):
+def mae_vit_small_shunted_2st_cross(**kwargs):
     model = MaskedAutoencoderShuntedViTCross(
         # Encoder
         dim_model=[256, 512],
@@ -220,10 +220,10 @@ def mae_vit_shunted_2st_small_cross(**kwargs):
         **kwargs,
     )
     return model
-shunted_2s_mae_vit_small_cross = mae_vit_shunted_2st_small_cross
+shunted_2s_mae_vit_small_cross = mae_vit_small_shunted_2st_cross
 
 
-def mae_vit_shunted_2st_base(**kwargs):
+def mae_vit_base_shunted_2st(**kwargs):
     model = MaskedAutoencoderShuntedViT(
         # Encoder
         dim_model=[512, 768],
@@ -238,10 +238,10 @@ def mae_vit_shunted_2st_base(**kwargs):
         **kwargs,
     )
     return model
-shunted_2s_mae_vit_base = mae_vit_shunted_2st_base
+shunted_2s_mae_vit_base = mae_vit_base_shunted_2st
 
 
-def mae_vit_shunted_2st_base_cross(**kwargs):
+def mae_vit_base_shunted_2st_cross(**kwargs):
     model = MaskedAutoencoderShuntedViTCross(
         # Encoder
         dim_model=[512, 768],
@@ -256,5 +256,5 @@ def mae_vit_shunted_2st_base_cross(**kwargs):
         **kwargs,
     )
     return model
-shunted_2s_mae_vit_base_cross = mae_vit_shunted_2st_base_cross
+shunted_2s_mae_vit_base_cross = mae_vit_base_shunted_2st_cross
 
