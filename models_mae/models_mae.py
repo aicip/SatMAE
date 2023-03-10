@@ -2,12 +2,13 @@ from functools import partial
 
 import torch
 import torch.nn as nn
+
+# xformers._is_functorch_available = True
+import torch.nn.functional as F
 from timm.models.vision_transformer import Block, PatchEmbed
 from xformers.factory import xFormer, xFormerConfig
 
 from util.pos_embed import get_2d_sincos_pos_embed
-
-# xformers._is_functorch_available = True
 
 
 class MaskedAutoencoderViT(nn.Module):
@@ -380,6 +381,7 @@ class MaskedAutoencoderViT(nn.Module):
 
     def forward_loss_mse(self, imgs, pred, mask=None):
         """
+        Mean squared error loss
         imgs: [N, 3, H, W]
         pred: [N, L, p*p*3]
         mask: [N, L], 0 is keep, 1 is remove,
@@ -411,6 +413,7 @@ class MaskedAutoencoderViT(nn.Module):
 
     def forward_loss_l1(self, imgs, pred, mask=None):
         """
+        L1 Loss
         imgs: [N, 3, H, W]
         pred: [N, L, p*p*3]
         mask: [N, L], 0 is keep, 1 is remove,
@@ -441,6 +444,96 @@ class MaskedAutoencoderViT(nn.Module):
         loss = (loss * mask).sum() / mask.sum() if mask is not None else loss.mean()
         return loss
 
+    def forward_loss_sad(self, imgs, pred, mask=None):
+        """
+        Sum of Absolute Difference Loss
+        imgs: [N, 3, H, W]
+        pred: [N, L, p*p*3]
+        mask: [N, L], 0 is keep, 1 is remove,
+        """
+        # print("pred", pred.shape)
+        # torch.Size([512, 64, 192])
+
+        target = self.patchify(
+            imgs, self.patch_embed.patch_size[0], self.input_channels
+        )
+        # print("target", target.shape)
+        # torch.Size([512, 64, 192])
+
+        if self.norm_pix_loss:
+            mean = target.mean(dim=-1, keepdim=True)
+            var = target.var(dim=-1, keepdim=True)
+            target = (target - mean) / (var + 1.0e-6) ** 0.5
+
+        loss = torch.abs(pred - target)
+        # sum of absolute difference per patch
+        loss = loss.sum(dim=-1)
+        # print("loss", loss.shape)
+        # torch.Size([512, 64])
+
+        loss = (loss * mask).sum() / mask.sum() if mask is not None else loss.mean()
+        return loss
+
+    def forward_loss_ssd(self, imgs, pred, mask=None):
+        """
+        Sum of Squared Difference Loss
+        imgs: [N, 3, H, W]
+        pred: [N, L, p*p*3]
+        mask: [N, L], 0 is keep, 1 is remove,
+        """
+        # print("pred", pred.shape)
+        # torch.Size([512, 64, 192])
+
+        target = self.patchify(
+            imgs, self.patch_embed.patch_size[0], self.input_channels
+        )
+        # print("target", target.shape)
+        # torch.Size([512, 64, 192])
+
+        if self.norm_pix_loss:
+            mean = target.mean(dim=-1, keepdim=True)
+            var = target.var(dim=-1, keepdim=True)
+            target = (target - mean) / (var + 1.0e-6) ** 0.5
+
+        loss = (pred - target) ** 2
+        # sum of squared difference per patch
+        loss = loss.sum(dim=-1)
+        # print("loss", loss.shape)
+        # torch.Size([512, 64])
+
+        loss = (loss * mask).sum() / mask.sum() if mask is not None else loss.mean()
+        return loss
+
+    def forward_loss_ce(self, imgs, pred, mask=None):
+        """
+        Cross Entropy Loss
+        imgs: [N, 3, H, W]
+        pred: [N, L, p*p*3]
+        mask: [N, L], 0 is keep, 1 is remove,
+        """
+        # print("pred", pred.shape)
+        # torch.Size([512, 64, 192])
+
+        target = self.patchify(
+            imgs, self.patch_embed.patch_size[0], self.input_channels
+        )
+        # print("target", target.shape)
+        # torch.Size([512, 64, 192])
+
+        if self.norm_pix_loss:
+            mean = target.mean(dim=-1, keepdim=True)
+            var = target.var(dim=-1, keepdim=True)
+            target = (target - mean) / (var + 1.0e-6) ** 0.5
+
+        loss = F.binary_cross_entropy_with_logits(pred, target, reduction="none")
+        # cross entropy per patch
+        loss = loss.sum(dim=-1)
+        # print("loss", loss.shape)
+        # torch.Size([512, 64])
+
+        loss = (loss * mask).sum() / mask.sum() if mask is not None else loss.mean()
+        return loss
+
     def forward(self, imgs, mask_ratio=0.75, mask_seed=None):
         if mask_seed is not None:
             torch.manual_seed(mask_seed)
@@ -454,6 +547,12 @@ class MaskedAutoencoderViT(nn.Module):
             loss = self.forward_loss_mse(imgs, pred, mask=loss_mask)
         elif self.loss.startswith("l1"):
             loss = self.forward_loss_l1(imgs, pred, mask=loss_mask)
+        elif self.loss.startswith("sad"):
+            loss = self.forward_loss_sad(imgs, pred, mask=loss_mask)
+        elif self.loss.startswith("ssd"):
+            loss = self.forward_loss_ssd(imgs, pred, mask=loss_mask)
+        elif self.loss.startswith("ce"):
+            loss = self.forward_loss_ce(imgs, pred, mask=loss_mask)
         else:
             raise ValueError(f"Loss type {self.loss} not supported.")
 
