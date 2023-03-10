@@ -499,7 +499,10 @@ class MaskedAutoencoderShuntedViT(nn.Module):
 
         return x, mask, ids_restore # type: ignore
 
-    def forward_decoder(self, x: torch.Tensor, ids_restore: torch.Tensor) -> torch.Tensor:
+    def forward_decoder(self, 
+                        x: torch.Tensor, 
+                        ids_restore: torch.Tensor) -> Union[torch.Tensor, 
+                                                            torch.Tensor]:
         if self.print_level > 1:
             print("--" * 8, " Decoder ", "--" * 8)
             print(f"In x.shape: {x.shape}")
@@ -539,15 +542,16 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         if self.print_level > 1:
             print("** Transformer blocks")
         for blk_ind, blk in enumerate(self.decoder_blocks):
-            x = blk(x)
+            x_embed = blk(x)
             if self.print_level > 1:
                 print(f"\tOutputs from block_{blk_ind}: (x.shape): {x.shape})")
-        x = self.decoder_norm(x)
-        if self.print_level > 1:
-            print(f"norm.x.shape: {x.shape}")
+
+        # x = self.decoder_norm(dec_emd) # TODO: Removed by @maofenggg ?
+        # if self.print_level > 1:
+        #     print(f"norm.x.shape: {x.shape}")
 
         # predictor projection
-        x = self.decoder_pred(x)
+        x = self.decoder_pred(x_embed) # type: ignore
         if self.print_level > 1:
             print(f"decoder_pred.x.shape: {x.shape}")
 
@@ -556,8 +560,8 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         if self.print_level > 1:
             print(f"out.x.shape: {x.shape}")
 
-        return x
-
+        return x, x_embed # type: ignore
+    
     def forward_loss_mse(self, 
                          imgs: torch.Tensor, 
                          pred: torch.Tensor, 
@@ -653,7 +657,7 @@ class MaskedAutoencoderShuntedViT(nn.Module):
             torch.manual_seed(mask_seed)
             
         latent, mask, ids_restore = self.forward_encoder(imgs)
-        pred = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
+        pred, _ = self.forward_decoder(latent, ids_restore)  # [N, L, p*p*3]
         
         loss_full = self.loss.endswith("full")
         loss_mask = None if loss_full else mask

@@ -7,16 +7,17 @@ PATCH_SIZES="4+4"
 ATTENTION="shunted"
 OUT_DIR_BASE="../Model_Saving"
 WANDB_PROJECT="satmae"
-START_EPOCH=0  # Modify below
-RESUME=""  # Modify below
-WANDB_ID=""  # Modify below
+START_EPOCH=0 # Modify below
+RESUME="" # Modify below
+WANDB_ID="" # Modify below
 # Mofify in path based on hostname
 IN_PATH_BASE="../fmow-rgb-preproc"
-IN_PATH="${IN_PATH_BASE}/train_${INPUT_SIZE}"
+IN_FILE_NAME="train_${INPUT_SIZE}"
 if ! hostname | grep -q "^com1822"; then
-  IN_PATH="${IN_PATH}_com2044"
+  IN_PATH_BASE="${IN_PATH_BASE}_com2044"
+  IN_FILE_NAME="${IN_FILE_NAME}_com2044"
 fi
-IN_PATH="${IN_PATH}.csv"
+IN_PATH="${IN_PATH_BASE}/${IN_FILE_NAME}.csv"
 ####################################################
 
 #################### Parameters ####################
@@ -26,12 +27,12 @@ PRINT_LEVEL=1
 # MODEL_NAME="mae_vit_mini_shunted_2st"
 # MODEL_NAME="mae_vit_small_shunted_2st"
 # MODEL_NAME="mae_vit_base_shunted_2st"
-# MODEL_NAME="mae_vit_tiny_shunted_2st_cross"
+MODEL_NAME="mae_vit_tiny_shunted_2st_cross"
 # MODEL_NAME="mae_vit_small_shunted_2st_cross"
 
 # ------- Run Specific ------- #
-DEVICE="cuda:3"
-BATCH_SIZE=512
+DEVICE="cuda:1"
+BATCH_SIZE=1024
 # -- Resume from checkpoint ??
 # CHECKPOINT_DIR="${OUT_DIR_BASE}/out_mae_vit_tiny_shunted_2st_shunted_i64-p[4, 4]-mr0.75_e200-we40_b512-a1_l1_full_lr0.001"
 # START_EPOCH=0
@@ -39,10 +40,10 @@ BATCH_SIZE=512
 # WANDB_ID="3qpkdx8k"  # take this from the run url
 
 # ------- Hyperparams ------- #
-LOSS="l1_full"
-LR=0.001
-# LOSS="mse_full"
-# LR=0.0001
+# LOSS="l1_full"
+# LR=0.001
+LOSS="mse"
+LR=0.0001
 MASK_RATIO='0.75'
 # MASK_RATIO='0.50'
 ####################################################

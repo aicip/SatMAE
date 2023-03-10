@@ -272,7 +272,7 @@ def get_args_parser():
     
     parser.add_argument(
         "--wandb_project",
-        type=str,
+        type=nullable_string,
         default=None,
         help="Wandb project name, eg: satmae",
     )
