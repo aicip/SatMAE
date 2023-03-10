@@ -22,7 +22,7 @@ IN_PATH="${IN_PATH}.csv"
 #################### Parameters ####################
 PRINT_LEVEL=1
 # ------- Model Name ------- #
-MODEL_NAME="mae_vit_tiny_shunted_2st"
+# MODEL_NAME="mae_vit_tiny_shunted_2st"
 # MODEL_NAME="mae_vit_mini_shunted_2st"
 # MODEL_NAME="mae_vit_small_shunted_2st"
 # MODEL_NAME="mae_vit_base_shunted_2st"
@@ -32,11 +32,11 @@ MODEL_NAME="mae_vit_tiny_shunted_2st"
 # ------- Run Specific ------- #
 DEVICE="cuda:3"
 BATCH_SIZE=512
-# Resume from checkpoint
-CHECKPOINT_DIR="${OUT_DIR_BASE}/out_mae_vit_tiny_shunted_2st_shunted_i64-p[4, 4]-mr0.75_e200-we40_b512-a1_l1_full_lr0.001"
-START_EPOCH=0
-RESUME="${CHECKPOINT_DIR}/checkpoint-${START_EPOCH}.pth"
-WANDB_ID="3qpkdx8k"  # take this from the run url
+# -- Resume from checkpoint ??
+# CHECKPOINT_DIR="${OUT_DIR_BASE}/out_mae_vit_tiny_shunted_2st_shunted_i64-p[4, 4]-mr0.75_e200-we40_b512-a1_l1_full_lr0.001"
+# START_EPOCH=0
+# RESUME="${CHECKPOINT_DIR}/checkpoint-${START_EPOCH}.pth"
+# WANDB_ID="3qpkdx8k"  # take this from the run url
 
 # ------- Hyperparams ------- #
 LOSS="l1_full"
