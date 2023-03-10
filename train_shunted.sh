@@ -1,16 +1,16 @@
 #!/bin/bash
 # !/bin/zsh
 
-DEVICE="cuda:1"
+DEVICE="cuda:3"
 
 EPOCHS=200
 
 INPUT_SIZE=64
-BATCH_SIZE=128
+BATCH_SIZE=512
 
 PATCH_SIZES="4-4"
 MASK_RATIO='0.75'
-# MASK_RATIO='0.60'
+# MASK_RATIO='0.50'
 # LR=0.0001
 # LOSS="mse"
 LR=0.001
@@ -19,11 +19,11 @@ LOSS="l1"
 PRINT_LEVEL=1
 ATTENTION="shunted"
 
-# MODEL_NAME="shunted_2s_mae_vit_tiny"
-# MODEL_NAME="shunted_2s_mae_vit_mini"
+MODEL_NAME="mae_vit_tiny_shunted_2st"
+# MODEL_NAME="mae_vit_mini_shunted_2st"
 # MODEL_NAME="mae_vit_small_shunted_2st"
-# MODEL_NAME="shunted_2s_mae_vit_base"
-MODEL_NAME="shunted_2s_mae_vit_tiny_cross"
+# MODEL_NAME="mae_vit_base_shunted_2st"
+# MODEL_NAME="mae_vit_tiny_shunted_2st_cross"
 # MODEL_NAME="mae_vit_small_shunted_2st_cross"
 
 # Data path for com1822:
@@ -38,14 +38,14 @@ OUT_DIR_BASE="/data2/HDD_16TB/ICCV/Model_Saving"
 # Data path for com2044
 # OUT_DIR_BASE="/mnt/com1822_HDD_16TB/ICCV/Model_Saving"
 
-OUT_DIR="${OUT_DIR_BASE}/out_${MODEL_NAME}_i${INPUT_SIZE}_p${PATCH_SIZES}_e${EPOCHS}_mask${MASK_RATIO}_${LOSS}_lr${LR}"
+OUT_DIR="${OUT_DIR_BASE}/out_${MODEL_NAME}_i${INPUT_SIZE}_p${PATCH_SIZES}_e${EPOCHS}_mask${MASK_RATIO}_${LOSS}_lr${LR}_test"
 
-# RESUME="${OUT_DIR_BASE}/out_mae_vit_tiny_shunted_2st_cross_i64_p4-4_e200_mask0.75_l1_lr0.001"
-# START_EPOCH=100
+# RESUME="${OUT_DIR_BASE}/out_mae_vit_tiny_shunted_2st_i64_p4-4_e200_mask0.75_l1_lr0.001"
+# START_EPOCH=1
 # RESUME="${RESUME}/checkpoint-${START_EPOCH}.pth"
-# OUT_DIR="${OUT_DIR}_resume"
+## OUT_DIR="${OUT_DIR}_resume"
 
-WANDB="satmae"
+WANDB_PROJECT="satmae"
 
 python3 main_pretrain.py \
 --device "${DEVICE}" \
@@ -61,7 +61,7 @@ python3 main_pretrain.py \
 --lr "${LR}" \
 --loss "${LOSS}" \
 --mask_ratio "${MASK_RATIO}" \
---wandb "${WANDB}" \
---resume "${RESUME}" \
---start_epoch "${START_EPOCH}" \
+--wandb_project "${WANDB_PROJECT}" \
+# --resume "${RESUME}" \
+# --start_epoch "${START_EPOCH}"
  

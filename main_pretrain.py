@@ -264,7 +264,7 @@ def get_args_parser():
         default="utk-iccv23",
         help="Wandb entity name, eg: utk-iccv23",
     )
-    # https://docs.wandb.ai/guides/runs/resuming
+    
     parser.add_argument(
         "--wandb_project",
         type=str,
@@ -451,6 +451,7 @@ def main(args):
                 name=model_name,
                 group=args.model,
                 job_type="pretrain",
+                resume=True if args.resume is not None else False,
             )
             wandb.config.update(args)
             wandb.config.update(
