@@ -13,7 +13,7 @@ import socket
 import time
 import traceback
 from pathlib import Path
-
+from copy import copy
 import numpy as np
 
 # assert timm.__version__ == "0.3.2"  # version check
@@ -487,9 +487,13 @@ def main(args):
                 resume=None if args.resume is None else "must",
                 id=wandb_id,
             )
-            wandb.config.update(args)
+            wandb_args = copy(args)
+            if args.resume is not None:
+                wandb_args.start_epoch += 1
+            wandb.config.update(wandb_args, allow_val_change=True)
             wandb.config.update(
-                {"num_params": model_num_params, "batch_size_eff": batch_size_eff}
+                {"num_params": model_num_params, 
+                 "batch_size_eff": batch_size_eff}
             )
             wandb.watch(model)
         else:

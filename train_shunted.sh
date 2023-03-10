@@ -33,10 +33,10 @@ MODEL_NAME="mae_vit_tiny_shunted_2st"
 DEVICE="cuda:3"
 BATCH_SIZE=512
 # Resume from checkpoint
-# CHECKPOINT_DIR="${OUT_DIR_BASE}/to-be-filled"
-# START_EPOCH=0
-# RESUME="${RESUME}/checkpoint-${START_EPOCH}.pth"
-# WANDB_ID="r3dr4f4"  # take his from the run url
+CHECKPOINT_DIR="${OUT_DIR_BASE}/out_mae_vit_tiny_shunted_2st_shunted_i64-p[4, 4]-mr0.75_e200-we40_b512-a1_l1_full_lr0.001"
+START_EPOCH=0
+RESUME="${CHECKPOINT_DIR}/checkpoint-${START_EPOCH}.pth"
+WANDB_ID="3qpkdx8k"  # take this from the run url
 
 # ------- Hyperparams ------- #
 LOSS="l1_full"
@@ -62,7 +62,7 @@ python3 main_pretrain.py \
     --device "${DEVICE}" \
     --print_level "${PRINT_LEVEL}" \
     --wandb_project "${WANDB_PROJECT}" \
-    --wandb_id "${MODEL_NAME}" \
+    --wandb_id "${WANDB_ID}" \
     --resume "${RESUME}" \
     --start_epoch "${START_EPOCH}" $@
  
