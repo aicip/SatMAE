@@ -7,9 +7,11 @@
 # --------------------------------------------------------
 
 from .models_mae import *
-from .models_mae_shunted import *
+from .models_mae_aug import *
 from .models_mae_cross import *
+from .models_mae_shunted import *
 from .models_mae_shunted_cross import *
+
 
 # --- MAE Models --- #
 def mae_vit_tiny(**kwargs):
@@ -20,6 +22,62 @@ def mae_vit_tiny(**kwargs):
         decoder_embed_dim=256,
         decoder_num_layers=4,
         decoder_num_heads=8,
+        **kwargs,
+    )
+    return model
+
+
+def mae_vit_tiny_aug25(**kwargs):
+    model = MaskedAutoencoderViTAug(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        **kwargs,
+    )
+    return model
+
+
+def mae_vit_tiny_aug25_nrp(**kwargs):
+    model: MaskedAutoencoderViTAug = MaskedAutoencoderViTAug(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        use_random_rotation=False,
+        use_random_perspective=False,
+        **kwargs,
+    )
+    return model
+
+
+def mae_vit_tiny_aug15(**kwargs):
+    model = MaskedAutoencoderViTAug(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        global_prob=0.15,
+        **kwargs,
+    )
+    return model
+
+
+def mae_vit_tiny_aug35(**kwargs):
+    model = MaskedAutoencoderViTAug(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        global_prob=0.35,
         **kwargs,
     )
     return model
@@ -148,6 +206,8 @@ def mae_vit_tiny_shunted_2st(**kwargs):
         **kwargs,
     )
     return model
+
+
 shunted_2s_mae_vit_tiny = mae_vit_tiny_shunted_2st
 
 
@@ -163,9 +223,11 @@ def mae_vit_tiny_shunted_2st_cross(**kwargs):
         decoder_embed_dim=256,
         decoder_num_layers=4,
         decoder_num_heads=8,
-        **kwargs
+        **kwargs,
     )
     return model
+
+
 shunted_2s_mae_vit_tiny_cross = mae_vit_tiny_shunted_2st_cross
 
 
@@ -184,6 +246,8 @@ def mae_vit_mini_shunted_2st(**kwargs):
         **kwargs,
     )
     return model
+
+
 shunted_2s_mae_vit_mini = mae_vit_mini_shunted_2st
 
 
@@ -202,6 +266,8 @@ def mae_vit_small_shunted_2st(**kwargs):
         **kwargs,
     )
     return model
+
+
 shunted_2s_mae_vit_small = mae_vit_small_shunted_2st
 
 
@@ -220,6 +286,8 @@ def mae_vit_small_shunted_2st_cross(**kwargs):
         **kwargs,
     )
     return model
+
+
 shunted_2s_mae_vit_small_cross = mae_vit_small_shunted_2st_cross
 
 
@@ -238,6 +306,8 @@ def mae_vit_base_shunted_2st(**kwargs):
         **kwargs,
     )
     return model
+
+
 shunted_2s_mae_vit_base = mae_vit_base_shunted_2st
 
 
@@ -256,5 +326,6 @@ def mae_vit_base_shunted_2st_cross(**kwargs):
         **kwargs,
     )
     return model
-shunted_2s_mae_vit_base_cross = mae_vit_base_shunted_2st_cross
 
+
+shunted_2s_mae_vit_base_cross = mae_vit_base_shunted_2st_cross
