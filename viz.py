@@ -162,7 +162,7 @@ def add_noise(image, noise_type="gaussian", noise_param=0.1):
     else:
         raise ValueError("Invalid noise type")
 
-    noisy_image = image + noise.to(image.dtype)
+    noisy_image = image + noise
     return noisy_image
 
 
