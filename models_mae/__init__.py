@@ -27,34 +27,6 @@ def mae_vit_tiny(**kwargs):
     return model
 
 
-def mae_vit_tiny_aug25(**kwargs):
-    model = MaskedAutoencoderViTAug(
-        dim_model=128,
-        encoder_num_layers=4,
-        encoder_num_heads=8,
-        decoder_embed_dim=256,
-        decoder_num_layers=4,
-        decoder_num_heads=8,
-        **kwargs,
-    )
-    return model
-
-
-def mae_vit_tiny_aug25_nrp(**kwargs):
-    model: MaskedAutoencoderViTAug = MaskedAutoencoderViTAug(
-        dim_model=128,
-        encoder_num_layers=4,
-        encoder_num_heads=8,
-        decoder_embed_dim=256,
-        decoder_num_layers=4,
-        decoder_num_heads=8,
-        use_random_rotation=False,
-        use_random_perspective=False,
-        **kwargs,
-    )
-    return model
-
-
 def mae_vit_tiny_aug15(**kwargs):
     model = MaskedAutoencoderViTAug(
         dim_model=128,
@@ -63,7 +35,33 @@ def mae_vit_tiny_aug15(**kwargs):
         decoder_embed_dim=256,
         decoder_num_layers=4,
         decoder_num_heads=8,
+        # Augmentation
+        use_random_grayscale=True,
+        use_color_jitter=True,
+        use_gaussian_blur=True,
+        use_random_rotation=True,
+        use_random_perspective=True,
         global_prob=0.15,
+        **kwargs,
+    )
+    return model
+
+
+def mae_vit_tiny_aug25(**kwargs):
+    model = MaskedAutoencoderViTAug(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        # Augmentation
+        use_random_grayscale=True,
+        use_color_jitter=True,
+        use_gaussian_blur=True,
+        use_random_rotation=True,
+        use_random_perspective=True,
+        global_prob=0.25,
         **kwargs,
     )
     return model
@@ -77,7 +75,75 @@ def mae_vit_tiny_aug35(**kwargs):
         decoder_embed_dim=256,
         decoder_num_layers=4,
         decoder_num_heads=8,
+        # Augmentation
+        use_random_grayscale=True,
+        use_color_jitter=True,
+        use_gaussian_blur=True,
+        use_random_rotation=True,
+        use_random_perspective=True,
         global_prob=0.35,
+        **kwargs,
+    )
+    return model
+
+
+def mae_vit_tiny_aug25_nrp(**kwargs):
+    model: MaskedAutoencoderViTAug = MaskedAutoencoderViTAug(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        # Augmentation
+        global_prob=0.25,
+        use_random_grayscale=True,
+        use_color_jitter=True,
+        use_gaussian_blur=True,
+        use_random_rotation=False,
+        use_random_perspective=False,
+        **kwargs,
+    )
+    return model
+
+
+def mae_vit_tiny_aug25_rp(**kwargs):
+    model: MaskedAutoencoderViTAug = MaskedAutoencoderViTAug(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        # Augmentation
+        global_prob=0.25,
+        use_random_grayscale=False,
+        use_color_jitter=False,
+        use_gaussian_blur=False,
+        use_random_rotation=True,
+        use_random_perspective=True,
+        **kwargs,
+    )
+    return model
+
+
+def mae_vit_tiny_aug50_rrc(**kwargs):
+    model = MaskedAutoencoderViTAug(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        # Augmentation
+        use_random_resized_crop=True,
+        random_resized_crop_scale=(0.2, 0.8),
+        use_random_grayscale=False,
+        use_color_jitter=False,
+        use_gaussian_blur=False,
+        use_random_rotation=False,
+        use_random_perspective=False,
+        global_prob=0.50,
         **kwargs,
     )
     return model
