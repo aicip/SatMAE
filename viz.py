@@ -162,8 +162,7 @@ def add_noise(image, noise_type="gaussian", noise_param=0.1):
     else:
         raise ValueError("Invalid noise type")
 
-    noisy_image = image + noise
-    return noisy_image
+    return image + noise
 
 
 def add_noise_torch(image, noise_type="gaussian", noise_param=0.1):
@@ -177,8 +176,7 @@ def add_noise_torch(image, noise_type="gaussian", noise_param=0.1):
     else:
         raise ValueError("Invalid noise type")
 
-    noisy_image = image + noise.to(image.device)
-    return noisy_image
+    return image + noise.to(image.device)
 
 
 @torch.no_grad()
