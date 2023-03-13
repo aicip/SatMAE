@@ -72,7 +72,7 @@ def mae_vit_tiny_crossV2_pmean_lmean_full(**kwargs):
         # Cross Args
         losses_pred_reduction="mean",
         lossed_latent_reduction="mean",
-        loss_latent_weight=0.5,
+        loss_latent_weight=1.0,
         **kwargs,
     )
     return model
@@ -94,6 +94,37 @@ def mae_vit_tiny_crossV2_pmean_lmean_half(**kwargs):
     )
     return model
 
+def mae_vit_tiny_crossV2_psum_lmean_full(**kwargs):
+    model = MaskedAutoencoderViTCrossV2(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        # Cross Args
+        losses_pred_reduction="sum",
+        lossed_latent_reduction="mean",
+        loss_latent_weight=1.0,
+        **kwargs,
+    )
+    return model
+
+def mae_vit_tiny_crossV2_psum_lmean_half(**kwargs):
+    model = MaskedAutoencoderViTCrossV2(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        # Cross Args
+        losses_pred_reduction="sum",
+        lossed_latent_reduction="mean",
+        loss_latent_weight=0.5,
+        **kwargs,
+    )
+    return model
 
 def mae_vit_tiny_cross(**kwargs):
     model = MaskedAutoencoderViTCross(
