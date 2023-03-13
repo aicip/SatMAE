@@ -10,19 +10,38 @@ import viz
 from .models_mae import MaskedAutoencoderViT
 
 
-class MaskedAutoencoderViTAug(MaskedAutoencoderViT):
+class MaskedAutoencoderViTCrossV2(MaskedAutoencoderViT):
     """Masked Autoencoder with VisionTransformer backbone"""
 
     def __init__(
         self,
         loss_latent=None,
-        loss_latent_weight=1.0,
+        loss_latent_weight: float = 1.0,
+        losses_pred_reduction: str = "sum",
+        lossed_latent_reduction: str = "sum",
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.loss_latent = loss_latent.lower() if loss_latent is not None else self.loss
         self.loss_latent_weight = loss_latent_weight
+        assert (
+            0.0 <= self.loss_latent_weight <= 1.0
+        ), "loss_latent_weight must be in [0.0, 1.0]"
+
+        self.losses_pred_reduction = losses_pred_reduction.lower()
+        self.lossed_latent_reduction = lossed_latent_reduction.lower()
+
+        allowed_reduction = ["mean", "sum"]
+        assert (
+            self.losses_pred_reduction in allowed_reduction
+        ), f"losses_pred_reduction must be in {allowed_reduction}"
+        assert (
+            self.lossed_latent_reduction in allowed_reduction
+        ), f"lossed_latent_reduction must be in {allowed_reduction}"
+
         print(f"Latent loss: {self.loss_latent} - weight: {self.loss_latent_weight}")
+        print(f"Losses pred reduction: {self.losses_pred_reduction}")
+        print(f"Lossed latent reduction: {self.lossed_latent_reduction}")
 
         self.crop_sm = nn.Sequential(
             T.RandomResizedCrop(
@@ -125,6 +144,16 @@ class MaskedAutoencoderViTAug(MaskedAutoencoderViT):
         print(f"losses_pred: {losses_pred}")
         print(f"losses_latent: {losses_latent}")
 
-        loss_final = sum(losses_pred) + self.loss_latent_weight * sum(losses_latent)
+        losses_pred_reduced = sum(losses_pred)
+        if self.losses_pred_reduction == "mean":
+            losses_pred_reduced /= len(losses_pred)
+
+        losses_latent_reduced = sum(losses_latent)
+        if self.lossed_latent_reduction == "mean":
+            losses_latent_reduced /= len(losses_latent)
+
+        loss_final = (
+            losses_pred_reduced + self.loss_latent_weight * losses_latent_reduced
+        )
 
         return loss_final, pred_orig, mask_orig
