@@ -36,7 +36,6 @@ def mae_vit_tiny_aug15(**kwargs):
         decoder_num_layers=4,
         decoder_num_heads=8,
         # Augmentation
-        use_random_grayscale=True,
         use_color_jitter=True,
         use_gaussian_blur=True,
         use_random_rotation=True,
@@ -56,7 +55,6 @@ def mae_vit_tiny_aug25(**kwargs):
         decoder_num_layers=4,
         decoder_num_heads=8,
         # Augmentation
-        use_random_grayscale=True,
         use_color_jitter=True,
         use_gaussian_blur=True,
         use_random_rotation=True,
@@ -76,7 +74,6 @@ def mae_vit_tiny_aug35(**kwargs):
         decoder_num_layers=4,
         decoder_num_heads=8,
         # Augmentation
-        use_random_grayscale=True,
         use_color_jitter=True,
         use_gaussian_blur=True,
         use_random_rotation=True,
@@ -97,7 +94,6 @@ def mae_vit_tiny_aug25_nrp(**kwargs):
         decoder_num_heads=8,
         # Augmentation
         global_prob=0.25,
-        use_random_grayscale=True,
         use_color_jitter=True,
         use_gaussian_blur=True,
         use_random_rotation=False,
@@ -117,7 +113,6 @@ def mae_vit_tiny_aug25_rp(**kwargs):
         decoder_num_heads=8,
         # Augmentation
         global_prob=0.25,
-        use_random_grayscale=False,
         use_color_jitter=False,
         use_gaussian_blur=False,
         use_random_rotation=True,
@@ -138,7 +133,6 @@ def mae_vit_tiny_aug50_rrc(**kwargs):
         # Augmentation
         use_random_resized_crop=True,
         random_resized_crop_scale=(0.2, 0.8),
-        use_random_grayscale=False,
         use_color_jitter=False,
         use_gaussian_blur=False,
         use_random_rotation=False,

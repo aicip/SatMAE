@@ -18,8 +18,7 @@ class MaskedAutoencoderViTAug(MaskedAutoencoderViT):
         # Random resized crop
         use_random_resized_crop: bool = False,
         random_resized_crop_scale: tuple = (0.2, 0.8),
-        # Color-related (brightness, contrast, saturation, hue, grayscale)
-        use_random_grayscale: bool = False,
+        # Color-related (brightness, contrast, saturation, hue)
         use_color_jitter: bool = False,
         color_jitter_intensity: float = 0.2,
         # Gaussian blur
@@ -52,9 +51,6 @@ class MaskedAutoencoderViTAug(MaskedAutoencoderViT):
                     p=global_prob,
                 )
             )
-
-        if use_random_grayscale:
-            transforms.append(T.RandomGrayscale(p=global_prob))
 
         if use_color_jitter:
             transforms.append(
