@@ -151,7 +151,7 @@ def prepare_image(image_uri, model, random_crop=False, crop_seed=None, resample=
 def add_noise(image, noise_type="gaussian", noise_param=0.1):
     # if noise type is random, randomly choose one of the other types
     if noise_type == "random":
-        noise_type = np.random.choice(["gaussian", "poisson", "s&p", "speckle"])
+        noise_type = np.random.choice(["gaussian", "poisson", "s&p"])
 
     if noise_type == "gaussian":
         noise = np.random.normal(0, noise_param, image.shape)
