@@ -15,96 +15,116 @@ class MaskedAutoencoderViTAug(MaskedAutoencoderViT):
 
     def __init__(
         self,
-        # Random resized crop
-        use_random_resized_crop: bool = False,
-        random_resized_crop_scale: tuple = (0.2, 0.8),
-        # Color-related (brightness, contrast, saturation, hue)
-        use_color_jitter: bool = False,
-        color_jitter_intensity: float = 0.2,
-        # Gaussian blur
-        use_gaussian_blur: bool = False,
-        gaussian_blur_sigma: float = 5.0,
-        gaussian_blur_kernel_size: int = 5,
-        # Rotation and perspective
-        use_random_rotation: bool = False,
-        rotation_degrees: float = 15,
-        use_random_perspective: bool = False,
-        perspective_distortion_scale: float = 0.15,
-        # Probability of applying each augmentation
-        global_prob: float = 0.25,
+        loss_latent=None,
+        loss_latent_weight=1.0,
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self.loss_latent = loss_latent.lower() if loss_latent is not None else self.loss
+        self.loss_latent_weight = loss_latent_weight
+        print(f"Latent loss: {self.loss_latent} - weight: {self.loss_latent_weight}")
 
-        transforms = []
-
-        if use_random_resized_crop:
-            transforms.append(
-                T.RandomApply(
-                    [
-                        T.RandomResizedCrop(
-                            size=(self.input_size, self.input_size),
-                            scale=random_resized_crop_scale,
-                            antialias=True,
-                        )
-                    ],
-                    p=global_prob,
-                )
+        self.crop_sm = nn.Sequential(
+            T.RandomResizedCrop(
+                size=(self.input_size, self.input_size),
+                scale=(0.1, 0.4),
+                antialias=True,
             )
+        )
 
-        if use_color_jitter:
-            transforms.append(
-                T.RandomApply(
-                    [
-                        T.ColorJitter(
-                            color_jitter_intensity,
-                            color_jitter_intensity,
-                            color_jitter_intensity,
-                            color_jitter_intensity,
-                        )
-                    ],
-                    p=global_prob,
-                )
+        self.crop_md = nn.Sequential(
+            T.RandomResizedCrop(
+                size=(self.input_size, self.input_size),
+                scale=(0.4, 0.7),
+                antialias=True,
             )
+        )
 
-        if use_random_rotation:
-            transforms.append(
-                T.RandomApply(
-                    [T.RandomRotation(degrees=rotation_degrees, expand=False)],
-                    p=global_prob,
-                )
-            )
+        # T.RandomApply(
+        #     [
+        #         T.RandomResizedCrop(
+        #             size=(self.input_size, self.input_size),
+        #             scale=random_resized_crop_scale,
+        #             antialias=True,
+        #         )
+        #     ],
+        #     p=global_prob,
+        # )
 
-        if use_random_perspective:
-            transforms.append(
-                T.RandomApply(
-                    [
-                        T.RandomPerspective(
-                            distortion_scale=perspective_distortion_scale, p=global_prob
-                        )
-                    ]
-                )
-            )
+        # T.RandomApply(
+        #     [
+        #         T.ColorJitter(
+        #             color_jitter_intensity,
+        #             color_jitter_intensity,
+        #             color_jitter_intensity,
+        #             color_jitter_intensity,
+        #         )
+        #     ],
+        #     p=global_prob,
+        # )
 
-        if use_gaussian_blur:
-            transforms.append(
-                T.RandomApply(
-                    [
-                        T.GaussianBlur(
-                            gaussian_blur_kernel_size,
-                            sigma=(gaussian_blur_sigma, gaussian_blur_sigma),
-                        )
-                    ],
-                    p=global_prob,
-                )
-            )
+        # T.RandomApply(
+        #     [T.RandomRotation(degrees=rotation_degrees, expand=False)],
+        #     p=global_prob,
+        # )
 
-        self.augment1 = nn.Sequential(*transforms)
+        # T.RandomApply(
+        #     [
+        #         T.RandomPerspective(
+        #             distortion_scale=perspective_distortion_scale, p=global_prob
+        #         )
+        #     ]
+        # )
+
+        # T.RandomApply(
+        #     [
+        #         T.GaussianBlur(
+        #             gaussian_blur_kernel_size,
+        #             sigma=(gaussian_blur_sigma, gaussian_blur_sigma),
+        #         )
+        #     ],
+        #     p=global_prob,
+        # )
+
+        # self.augment1 = nn.Sequential(*transforms)
 
     def forward(self, imgs, mask_ratio=0.75, mask_seed: int = None):
         if mask_seed is not None:
             torch.manual_seed(mask_seed)
 
-        imgs = self.augment1(imgs)
+        imgs_crop_sm, imgs_crop_md = self.crop_sm(imgs), self.crop_md(imgs)
 
-        return super().forward(imgs, mask_ratio=mask_ratio, mask_seed=mask_seed)
+        loss_crop_sm, _, _, latent_crop_sm = super().forward(
+            imgs_crop_sm, mask_ratio=mask_ratio, mask_seed=mask_seed, return_latent=True
+        )
+        loss_crop_md, _, _, latent_crop_md = super().forward(
+            imgs_crop_md, mask_ratio=mask_ratio, mask_seed=mask_seed, return_latent=True
+        )
+        loss_orig, pred_orig, mask_orig, latent_orig = super().forward(
+            imgs, mask_ratio=mask_ratio, mask_seed=mask_seed, return_latent=True
+        )
+
+        losses_pred = [loss_orig, loss_crop_sm, loss_crop_md]
+
+        # latent loss between each crop and original
+        # as well as between crops themselves
+        latent_loss_fn = None
+        if self.loss_latent == "mse":
+            latent_loss_fn = nn.MSELoss(reduction="mean")
+        elif self.loss_latent == "l1":
+            latent_loss_fn = nn.L1Loss(reduction="mean")
+        else:
+            raise ValueError(f"Unknown latent loss: {self.latent_loss}")
+
+        losses_latent = [
+            latent_loss_fn(latent_crop_sm, latent_orig),
+            latent_loss_fn(latent_crop_md, latent_orig),
+            latent_loss_fn(latent_crop_sm, latent_crop_md),
+        ]
+
+        print(f"losses_pred: {losses_pred}")
+        print(f"losses_latent: {losses_latent}")
+
+        loss_final = sum(losses_pred) + self.loss_latent_weight * sum(losses_latent)
+
+        return loss_final, pred_orig, mask_orig
