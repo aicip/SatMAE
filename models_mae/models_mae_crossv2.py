@@ -115,4 +115,5 @@ class MaskedAutoencoderViTCrossV2(MaskedAutoencoderViT):
             losses_pred_reduced + self.loss_latent_weight * losses_latent_reduced
         )
 
+        # Returning the final loss, original prediction and mask (of original image only)
         return loss_final, pred_orig, mask_orig
