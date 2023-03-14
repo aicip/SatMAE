@@ -10,6 +10,7 @@ import numpy as np
 import PIL
 import torch
 from PIL import Image
+from pytorch_msssim import MS_SSIM, SSIM, ms_ssim, ssim
 from torchvision import transforms as T
 
 import models_mae
@@ -275,6 +276,7 @@ def plot_comp(
     maskseed=None,
     use_noise=None,
     use_random_crop=False,
+    comp_metric="ssd",
     resample=None,
     title=None,
     figsize=12,
@@ -325,14 +327,32 @@ def plot_comp(
         )
 
         diff = torch.abs(x[0] - y[0])
-        diff_ssd = torch.sum((x[0] - y[0]) ** 2).item()
+
+        comp_metric = comp_metric.lower()
+        if comp_metric == "mse":
+            diff_m = torch.mean((x[0] - y[0]) ** 2).item()
+        elif comp_metric == "l1":
+            diff_m = torch.mean(torch.abs(x[0] - y[0])).item()
+
+        elif comp_metric == "ssd":
+            diff_m = torch.sum((x[0] - y[0]) ** 2).item()
+        elif comp_metric == "sad":
+            diff_m = torch.sum(torch.abs(x[0] - y[0])).item()
+
+        elif comp_metric == "ssim":
+            diff_m = ssim(x, y, data_range=1, size_average=True).item()
+        elif comp_metric == "msssim":
+            diff_m = ms_ssim(x, y, data_range=1, size_average=True).item()
+
+        else:
+            raise ValueError(f"Unknown metric {comp_metric}")
 
         imgs = [x[0], im_masked[0], y[0], diff, im_paste[0]]
         titles = [
             "Original",
             "Masked",
             f"{model_name}",
-            f"SSD: {diff_ssd:.2f}",
+            f"{comp_metric.upper()} = {diff_m:.3f}",
             "Reconstruction + Visible",
         ]
 
@@ -380,6 +400,7 @@ def plot_comp_many(
     use_random_crop: bool = False,
     num_random_crop: int = 1,
     resample=PIL.Image.Resampling.BICUBIC,
+    comp_metric="ssd",
     base_title: Optional[str] = None,
     save=False,
 ):
@@ -413,6 +434,7 @@ def plot_comp_many(
                 title=title,
                 use_noise=None,
                 resample=resample,
+                comp_metric=comp_metric,
                 save=save,
             )
             if use_noise is not None:
@@ -423,6 +445,7 @@ def plot_comp_many(
                     use_noise=use_noise,
                     title=f"{title} - {use_noise[0]} noise {use_noise[1]}",
                     resample=resample,
+                    comp_metric=comp_metric,
                     save=save,
                 )
             if use_random_crop:
@@ -434,5 +457,6 @@ def plot_comp_many(
                         use_random_crop=True,
                         title=f"{title} - Random Resize Crop",
                         resample=resample,
+                        comp_metric=comp_metric,
                         save=save,
                     )
