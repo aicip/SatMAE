@@ -7,9 +7,11 @@
 # --------------------------------------------------------
 
 from .models_mae import *
-from .models_mae_shunted import *
 from .models_mae_cross import *
+from .models_mae_crossv2 import *
+from .models_mae_shunted import *
 from .models_mae_shunted_cross import *
+
 
 # --- MAE Models --- #
 def mae_vit_tiny(**kwargs):
@@ -24,6 +26,105 @@ def mae_vit_tiny(**kwargs):
     )
     return model
 
+
+def mae_vit_tiny_crossV2_psum_lsum_full(**kwargs):
+    model = MaskedAutoencoderViTCrossV2(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        # Cross Args
+        losses_pred_reduction="sum",
+        lossed_latent_reduction="sum",
+        loss_latent_weight=1.0,
+        **kwargs,
+    )
+    return model
+
+
+def mae_vit_tiny_crossV2_psum_lsum_half(**kwargs):
+    model = MaskedAutoencoderViTCrossV2(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        # Cross Args
+        losses_pred_reduction="sum",
+        lossed_latent_reduction="sum",
+        loss_latent_weight=0.5,
+        **kwargs,
+    )
+    return model
+
+
+def mae_vit_tiny_crossV2_pmean_lmean_full(**kwargs):
+    model = MaskedAutoencoderViTCrossV2(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        # Cross Args
+        losses_pred_reduction="mean",
+        lossed_latent_reduction="mean",
+        loss_latent_weight=1.0,
+        **kwargs,
+    )
+    return model
+
+
+def mae_vit_tiny_crossV2_pmean_lmean_half(**kwargs):
+    model = MaskedAutoencoderViTCrossV2(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        # Cross Args
+        losses_pred_reduction="mean",
+        lossed_latent_reduction="mean",
+        loss_latent_weight=0.5,
+        **kwargs,
+    )
+    return model
+
+def mae_vit_tiny_crossV2_psum_lmean_full(**kwargs):
+    model = MaskedAutoencoderViTCrossV2(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        # Cross Args
+        losses_pred_reduction="sum",
+        lossed_latent_reduction="mean",
+        loss_latent_weight=1.0,
+        **kwargs,
+    )
+    return model
+
+def mae_vit_tiny_crossV2_psum_lmean_half(**kwargs):
+    model = MaskedAutoencoderViTCrossV2(
+        dim_model=128,
+        encoder_num_layers=4,
+        encoder_num_heads=8,
+        decoder_embed_dim=256,
+        decoder_num_layers=4,
+        decoder_num_heads=8,
+        # Cross Args
+        losses_pred_reduction="sum",
+        lossed_latent_reduction="mean",
+        loss_latent_weight=0.5,
+        **kwargs,
+    )
+    return model
 
 def mae_vit_tiny_cross(**kwargs):
     model = MaskedAutoencoderViTCross(
@@ -148,6 +249,8 @@ def mae_vit_tiny_shunted_2st(**kwargs):
         **kwargs,
     )
     return model
+
+
 shunted_2s_mae_vit_tiny = mae_vit_tiny_shunted_2st
 
 
@@ -163,9 +266,11 @@ def mae_vit_tiny_shunted_2st_cross(**kwargs):
         decoder_embed_dim=256,
         decoder_num_layers=4,
         decoder_num_heads=8,
-        **kwargs
+        **kwargs,
     )
     return model
+
+
 shunted_2s_mae_vit_tiny_cross = mae_vit_tiny_shunted_2st_cross
 
 
@@ -184,6 +289,8 @@ def mae_vit_mini_shunted_2st(**kwargs):
         **kwargs,
     )
     return model
+
+
 shunted_2s_mae_vit_mini = mae_vit_mini_shunted_2st
 
 
@@ -202,6 +309,8 @@ def mae_vit_small_shunted_2st(**kwargs):
         **kwargs,
     )
     return model
+
+
 shunted_2s_mae_vit_small = mae_vit_small_shunted_2st
 
 
@@ -220,6 +329,8 @@ def mae_vit_small_shunted_2st_cross(**kwargs):
         **kwargs,
     )
     return model
+
+
 shunted_2s_mae_vit_small_cross = mae_vit_small_shunted_2st_cross
 
 
@@ -238,6 +349,8 @@ def mae_vit_base_shunted_2st(**kwargs):
         **kwargs,
     )
     return model
+
+
 shunted_2s_mae_vit_base = mae_vit_base_shunted_2st
 
 
@@ -256,5 +369,6 @@ def mae_vit_base_shunted_2st_cross(**kwargs):
         **kwargs,
     )
     return model
-shunted_2s_mae_vit_base_cross = mae_vit_base_shunted_2st_cross
 
+
+shunted_2s_mae_vit_base_cross = mae_vit_base_shunted_2st_cross

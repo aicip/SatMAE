@@ -54,6 +54,7 @@ class MaskedAutoencoderViT(nn.Module):
         self.decoder_embed_dim = decoder_embed_dim
         self.mask_ratio = mask_ratio
         self.loss = loss.lower()
+        print(f"Loss: {self.loss}")
 
         self.use_xformers = use_xformers
 
@@ -441,7 +442,7 @@ class MaskedAutoencoderViT(nn.Module):
         loss = (loss * mask).sum() / mask.sum() if mask is not None else loss.mean()
         return loss
 
-    def forward(self, imgs, mask_ratio=0.75, mask_seed=None):
+    def forward(self, imgs, mask_ratio=0.75, mask_seed=None, return_latent=False):
         if mask_seed is not None:
             torch.manual_seed(mask_seed)
 
@@ -457,4 +458,4 @@ class MaskedAutoencoderViT(nn.Module):
         else:
             raise ValueError(f"Loss type {self.loss} not supported.")
 
-        return loss, pred, mask
+        return (loss, pred, mask, latent) if return_latent else (loss, pred, mask)
