@@ -1,5 +1,6 @@
 from typing import Tuple, Union
 import math
+import re
 import torch
 import torch.nn as nn
 
@@ -47,9 +48,10 @@ class MaskedAutoencoderShuntedViT(nn.Module):
         **kwargs,
     ):
         super().__init__()
+        mask_ratio = 0.75 # TODO: Remove this line
         self.print_level = print_level
         if isinstance(patch_size, str):
-            sep = "+"
+            sep = re.findall(r"[-+|]", patch_size)[0]
             to_list = lambda x: [int(y) for y in x.split(sep)]
             patch_size = to_list(patch_size)
         if self.print_level > 0:

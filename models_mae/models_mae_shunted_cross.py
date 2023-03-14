@@ -67,7 +67,8 @@ class MaskedAutoencoderShuntedViTCross(MaskedAutoencoderShuntedViT):
 
         pred1, dec_emd_1 = self.forward_decoder(latent1, ids_restore1)  # [N, L, p*p*3]
         pred2, dec_emd_2 = self.forward_decoder(latent2, ids_restore2)  # [N, L, p*p*3]
-
+    
+        
         if self.loss == "mse":
             loss1 = self.forward_loss_mse(img1, pred1, mask1)
             loss2 = self.forward_loss_mse(img2, pred2, mask2)
