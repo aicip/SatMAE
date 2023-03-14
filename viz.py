@@ -110,7 +110,7 @@ def print_checkpoint_folders(chkpt_basedir):
     for folder, last_modified in potential_folders:
         last_modified = time.time() - last_modified
         time_ago = "some time"
-        for time_ago_ in time_agos:
+        for time_ago_ in time_agos: # type: ignore
             time_ago = time_ago_
             if last_modified < 60:
                 break
@@ -227,7 +227,7 @@ def run_one_image(img, model, seed: Optional[int] = None, device=None):
     return x, im_masked, y, im_paste
 
 
-def show_image(image, ax=None, title=""):
+def show_image(image, ax, title=""):
     # image is [H, W, 3]
     assert image.shape[2] == 3
     # if needed conver to int 0-255
@@ -322,7 +322,7 @@ def plot_comp(
         ]
 
         for i in range(5):
-            ax = axs[model_i, i] if len(models) > 1 else axs[i]
+            ax = axs[model_i, i] if len(models) > 1 else axs[i]  # type: ignore
             show_image(imgs[i], ax, titles[i])
 
     plt.tight_layout()
@@ -347,7 +347,7 @@ def plot_comp(
     fig.canvas.draw()
 
     # Now we can save it to a numpy array.
-    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)  # type: ignore
     data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
     plt.close(fig)
     return data
@@ -364,7 +364,7 @@ def plot_comp_many(
     use_noise: Optional[tuple] = None,  # ex: ("gaussian", 0.25)
     use_random_crop: bool = False,
     num_random_crop: int = 1,
-    resample=PIL.Image.Resampling.BICUBIC,
+    resample=PIL.Image.Resampling.BICUBIC,  # type: ignore
     base_title: Optional[str] = None,
     save=False,
 ):

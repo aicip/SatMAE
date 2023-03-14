@@ -272,7 +272,7 @@ def get_args_parser():
     
     parser.add_argument(
         "--wandb_project",
-        type=str,
+        type=nullable_string,
         default=None,
         help="Wandb project name, eg: satmae",
     )
@@ -433,14 +433,17 @@ def main(args):
     #######################################################################################
     # Set up output directory, checkpointing, and logging
     print("=" * 80)
-
+    if args.attn_name == "shunted":
+        patch_size = "+".join([str(x) for x in args.patch_size])
+    else:
+        patch_size = args.patch_size
     model_name: str = "_".join(
         [
             args.model,
             f"xformers-{args.attn_name}-{args.ffn_name}"
             if args.use_xformers
             else f"{args.attn_name}",
-            f"i{args.input_size}-p{args.patch_size}-mr{args.mask_ratio}",
+            f"i{args.input_size}-p{patch_size}-mr{args.mask_ratio}",
             f"e{args.epochs}-we{args.warmup_epochs}",
             f"b{args.batch_size}-a{args.accum_iter}",
             f"{args.loss}{'-normpix' if args.norm_pix_loss else ''}",
