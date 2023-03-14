@@ -331,12 +331,12 @@ def plot_comp(
         comp_metric = comp_metric.lower()
         if comp_metric == "mse":
             diff_m = torch.mean((x[0] - y[0]) ** 2).item()
-        elif comp_metric == "l1":
+        elif comp_metric == "mae":
             diff_m = torch.mean(torch.abs(x[0] - y[0])).item()
 
-        elif comp_metric == "ssd":
+        elif comp_metric in ["l2", "ssd"]:
             diff_m = torch.sum((x[0] - y[0]) ** 2).item()
-        elif comp_metric == "sad":
+        elif comp_metric in ["l1", "sad"]:
             diff_m = torch.sum(torch.abs(x[0] - y[0])).item()
 
         elif comp_metric == "ssim":
