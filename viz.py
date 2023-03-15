@@ -149,19 +149,34 @@ def prepare_image(image_uri, model, random_crop=False, crop_seed=None, resample=
 
 
 def add_noise(image, noise_type="gaussian", noise_param=0.1):
+    # if noise type is random, randomly choose one of the other types
+    if noise_type == "random":
+        noise_type = np.random.choice(["gaussian", "poisson", "s&p"])
+
     if noise_type == "gaussian":
         noise = np.random.normal(0, noise_param, image.shape)
     elif noise_type == "poisson":
         noise = np.random.poisson(noise_param, image.shape)
     elif noise_type == "s&p":
         noise = np.random.binomial(1, noise_param, image.shape)
-    elif noise_type == "speckle":
-        noise = np.random.normal(0, noise_param, image.shape)
     else:
         raise ValueError("Invalid noise type")
 
-    noisy_image = image + noise
-    return noisy_image
+    return image + noise
+
+
+def add_noise_torch(image, noise_type="gaussian", noise_param=0.1):
+    # create a tensor the same size as the image
+    if noise_type == "gaussian":
+        noise = torch.randn_like(image) * noise_param
+    elif noise_type == "poisson":
+        noise = torch.poisson(torch.ones_like(image) * noise_param)
+    elif noise_type == "s&p":
+        noise = torch.bernoulli(torch.ones_like(image) * noise_param)
+    else:
+        raise ValueError("Invalid noise type")
+
+    return image + noise.to(image.device)
 
 
 @torch.no_grad()

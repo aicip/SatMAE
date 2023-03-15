@@ -55,6 +55,7 @@ class MaskedAutoencoderViT(nn.Module):
         self.decoder_embed_dim = decoder_embed_dim
         self.mask_ratio = mask_ratio
         self.loss = loss.lower()
+        print(f"Loss: {self.loss}")
 
         self.use_xformers = use_xformers
 
@@ -411,39 +412,6 @@ class MaskedAutoencoderViT(nn.Module):
         loss = (loss * mask).sum() / mask.sum() if mask is not None else loss.mean()
         return loss
 
-    def forward_loss_l1(self, imgs, pred, mask=None):
-        """
-        L1 Loss
-        imgs: [N, 3, H, W]
-        pred: [N, L, p*p*3]
-        mask: [N, L], 0 is keep, 1 is remove,
-        """
-        # print("pred", pred.shape)
-        # torch.Size([512, 64, 192])
-
-        target = self.patchify(
-            imgs, self.patch_embed.patch_size[0], self.input_channels
-        )
-        # print("target", target.shape)
-        # torch.Size([512, 64, 192])
-
-        if self.norm_pix_loss:
-            mean = target.mean(dim=-1, keepdim=True)
-            var = target.var(dim=-1, keepdim=True)
-            target = (target - mean) / (var + 1.0e-6) ** 0.5
-
-        loss = torch.abs(pred - target)
-        # print("loss", loss.shape)
-        # torch.Size([512, 64, 192])
-
-        # mean loss per patch
-        loss = loss.mean(dim=-1)
-        # print("loss", loss.shape)
-        # torch.Size([512, 64])
-
-        loss = (loss * mask).sum() / mask.sum() if mask is not None else loss.mean()
-        return loss
-
     def forward_loss_sad(self, imgs, pred, mask=None):
         """
         Sum of Absolute Difference Loss
@@ -537,7 +505,7 @@ class MaskedAutoencoderViT(nn.Module):
         loss = (loss * mask).sum() / mask.sum() if mask is not None else loss.mean()
         return loss
 
-    def forward(self, imgs, mask_ratio=0.75, mask_seed=None):
+    def forward(self, imgs, mask_ratio=0.75, mask_seed=None, return_latent=False):
         if mask_seed is not None:
             torch.manual_seed(mask_seed)
 
@@ -559,4 +527,4 @@ class MaskedAutoencoderViT(nn.Module):
         else:
             raise ValueError(f"Loss type {self.loss} not supported.")
 
-        return loss, pred, mask
+        return (loss, pred, mask, latent) if return_latent else (loss, pred, mask)
